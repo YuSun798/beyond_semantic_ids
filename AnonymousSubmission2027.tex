@@ -264,7 +264,7 @@ MSE-frozen & 3.2M & 0.2482 & 0.1424 \\
 
 \subsection{Cross-Dataset Pipeline Results}
 
-The auxiliary draft evaluates CQG-Rec as a candidate generator followed by SASRec reranking. Table~\ref{tab:cross} shows that the pipeline achieves 97.7--102\% of SASRec Recall@10 across ML-1M, Beauty, and Sports. This result is important for system design: even when standalone dense retrieval is below full-rank SASRec, CQG-Rec can provide a candidate set that allows a standard reranker to recover nearly all ranking quality.
+We further evaluate CQG-Rec as a candidate generator followed by SASRec reranking. Table~\ref{tab:cross} shows that the pipeline achieves 97.7--102\% of SASRec Recall@10 across ML-1M, Beauty, and Sports. This result is important for system design: even when standalone dense retrieval is below full-rank SASRec, CQG-Rec can provide a candidate set that allows a standard reranker to recover nearly all ranking quality.
 
 \begin{table}[t]
 \centering
@@ -382,32 +382,106 @@ This paper identifies the Beam Search Reachability Ceiling as a practical bottle
 
 \bibliography{references}
 
+\clearpage
 \appendix
 
-\section{Appendix: Additional Experimental Details}
+\section{Experimental Protocol and Reproducibility}
+\label{app:protocol}
 
-\subsection{Training Hyperparameters}
+\subsection{Dataset Splits}
+\label{app:splits}
+
+All datasets are converted into chronological user sequences. For each user, we use the last interaction for testing, the penultimate interaction for validation, and all earlier interactions for training. Users with insufficient history after filtering are removed. Evaluation is full-catalog unless otherwise stated: the target item is ranked against all candidate items rather than against sampled negatives. The reported top-$K$ metrics use $K\in\{5,10,20,30,50,70,90\}$ when available.
+
+\subsection{Evaluation Metrics}
+\label{app:metrics}
+
+For a user $u$ with held-out target item $i_u^\star$, Recall@$K$ is one if $i_u^\star$ appears in the top-$K$ list and zero otherwise. NDCG@$K$ discounts a hit by the target rank. For SID models, we additionally report the beam-search reachable rate:
+\[
+\mathrm{Reachable@B} =
+\frac{1}{|\mathcal{I}|}
+\sum_{i\in\mathcal{I}}
+\mathbf{1}\{i\in \cup_{u\in\mathcal{U}} \mathrm{Beam}_B(u)\},
+\]
+where $\mathrm{Beam}_B(u)$ is the set of items decoded by beam search with beam width $B$ for user $u$. This metric measures support coverage of the inference procedure, not ranking accuracy conditional on support.
+
+\section{Model and Training Details}
+\label{app:training}
+
+\subsection{Hyperparameters}
+\label{app:hparams}
 
 \begin{table*}[h]
 \centering
 \small
 \begin{tabular}{lrrrrrrl}
 \toprule
-Method & $d$ & Layers & Heads & LR & Batch & Epochs & Loss \\
+Method & $d$ & Layers & Heads & LR & Batch & Epochs/Steps & Objective \\
 \midrule
-SASRec & 64 & 2 & 2 & 1e-3 & 256 & 200 & BPR \\
-CQG-Rec MSE & 256 & 4 & 4 & 1e-3 & 256 & 50 & MSE \\
-CQG-Rec InfoNCE & 256 & 4 & 4 & 1e-4 & 256 & 100 & InfoNCE, $\tau=0.07$ \\
-CQG-Rec CE & 256 & 4 & 4 & 1e-4 & 256 & 100 & Softmax CE, $\tau=0.07$ \\
-Qwen hybrid & -- & -- & -- & 5e-5 & 32$\times$8 & 10 & InfoNCE \\
-k-means SID decoder & 128 & 2 & 2 & 1e-4 & 256 & 100K iter & CE \\
+SASRec item encoder & 64 & 2 & 2 & 1e-3 & 256--1024 & 400 epochs & BPR \\
+CQG-Rec MSE & 256 & 4 & 4 & 1e-3 & 256 & 50 epochs & MSE to target embedding \\
+CQG-Rec InfoNCE & 256 & 4 & 4 & 1e-4 & 256 & 100 epochs & In-batch InfoNCE, $\tau=0.07$ \\
+CQG-Rec CE & 256 & 4 & 4 & 1e-4 & 256 & 100 epochs & Full-catalog softmax CE \\
+Qwen hybrid probe & -- & -- & -- & 5e-5 & 32$\times$8 & 10 epochs & InfoNCE with projection head \\
+TIGER-style SID decoder & 384 & 4 & 6 & 1e-3 & 256 & 50K steps & Autoregressive CE over SID tokens \\
 \bottomrule
 \end{tabular}
-\caption{Training hyperparameters. Sequence length is 50 for ML-1M and 20 for Beauty/Sports.}
+\caption{Training hyperparameters used in the current experiments. Sequence length is 50 for ML-1M and LastFM, and 20 for Beauty, Sports, and Electronics.}
 \label{tab:hparams}
 \end{table*}
 
+\subsection{CQG-Rec Dataloader}
+\label{app:cqg_dataloader}
+
+CQG-Rec uses next-item prediction examples derived from user histories. Each training example contains a padded history sequence and the next-item target. The history item IDs are mapped to frozen item embeddings before entering the query generator; the target ID is used either to index the target embedding for MSE/InfoNCE or to index the full-catalog label for CE. A batch therefore has the form
+\[
+(\mathbf{H}, \mathbf{y}) =
+\{([i_{t-L},\ldots,i_{t-1}], i_t)\}_{b=1}^{B},
+\]
+where $L$ is the maximum sequence length and $B$ is the batch size. Padding positions are masked and never treated as candidate items. This dataloader is intentionally the same sequential next-item protocol used by SASRec, so the comparison isolates the output interface rather than changing the recommendation task.
+
+\subsection{Continuous Query Training Objectives}
+\label{app:cqg_losses}
+
+The MSE variant regresses the generated query $q_u$ to the frozen target embedding $e_{i^\star}$:
+\[
+\mathcal{L}_{\mathrm{MSE}} =
+\|q_u - e_{i^\star}\|_2^2.
+\]
+The InfoNCE variant treats other targets in the batch as negatives:
+\[
+\mathcal{L}_{\mathrm{NCE}} =
+-\log
+\frac{\exp(q_u^\top e_{i^\star}/\tau)}
+{\sum_{j\in\mathcal{B}}\exp(q_u^\top e_j/\tau)}.
+\]
+The CE variant scores the full frozen catalog:
+\[
+\mathcal{L}_{\mathrm{CE}} =
+-\log
+\frac{\exp(q_u^\top e_{i^\star}/\tau)}
+{\sum_{j=1}^{N}\exp(q_u^\top e_j/\tau)}.
+\]
+All variants retrieve by dense similarity at inference time, so all encoded items remain reachable.
+
+\section{SID Construction and Decoder Training}
+\label{app:sid}
+
+\subsection{Semantic-ID Construction}
+\label{app:sid_construction}
+
+The SID baseline follows the TIGER-style pipeline. First, a SASRec encoder is trained on the same chronological sequences used by CQG-Rec. Its learned item embedding matrix is frozen and clustered by hierarchical k-means. Each item receives a depth-3 code path. The resulting tuple of cluster indices is treated as the target token sequence for the autoregressive decoder. Code collisions are resolved by assigning residual tie-break identifiers when needed, but in the reported ML-1M run collisions are negligible: 99.4\% of items receive unique codes.
+
+\subsection{TIGER-Style Dataloader}
+\label{app:tiger_dataloader}
+
+The SID decoder dataloader uses the same history-target pairs as CQG-Rec, but replaces the target item ID with its code tuple. Each batch contains a padded item-history sequence and a target SID sequence. Training minimizes token-level cross-entropy over the code positions. At inference, beam search expands partial SID prefixes under the code trie, maps completed codes back to item IDs, and returns the ranked decoded items.
+
+\section{Additional Ablations}
+\label{app:ablations}
+
 \subsection{Temperature Ablation}
+\label{app:temperature}
 
 \begin{table}[h]
 \centering
@@ -422,11 +496,17 @@ CE, $\tau=0.20$ & 0.2373 & 22.9\% \\
 MSE & 0.2425 & $\sim$4.3\% \\
 \bottomrule
 \end{tabular}
-\caption{Temperature ablation for CE training on ML-1M.}
+\caption{Temperature ablation for CE training on ML-1M. Lower temperatures improve shallow retrieval but can enlarge the validation-test gap.}
 \label{tab:temperature}
 \end{table}
 
-\subsection{LLM Recall Curve}
+\subsection{Loss Landscape}
+\label{app:loss_landscape}
+
+The CE objective benefits from catalog-complete visibility on smaller catalogs because each update contrasts the positive item against all alternatives. MSE is geometrically stable but lacks explicit repulsion from hard negatives. InfoNCE sits between these regimes and depends on the quality of in-batch negatives. This explains why CE obtains the strongest shallow Recall@10 in ML-1M, while MSE and BPR-like variants remain more scalable to larger catalogs.
+
+\section{LLM Backbone Diagnostic}
+\label{app:llm}
 
 \begin{table}[h]
 \centering
@@ -443,7 +523,10 @@ Qwen text-aware hybrid & 0.134 & 0.212 & 0.308 & 0.460 & 0.517 & 0.564 \\
 \label{tab:llmcurve}
 \end{table}
 
-\subsection{RQ-VAE and k-means Tokenization}
+We tested pretrained LLM-style backbones as continuous query generators. The best tested hybrid underperformed the scratch Transformer. We therefore treat the LLM result as a diagnostic rather than as the main method. The likely failure modes are alignment mismatch between language-model hidden states and the frozen recommendation embedding space, insufficient recommendation-specific signal under small-data fine-tuning, and optimization instability when a pretrained decoder is asked to output calibrated dense retrieval vectors.
+
+\section{Tokenization Diagnostics}
+\label{app:tokenization}
 
 \begin{table}[h]
 \centering
@@ -452,17 +535,25 @@ Qwen text-aware hybrid & 0.134 & 0.212 & 0.308 & 0.460 & 0.517 & 0.564 \\
 \toprule
 Configuration & Utilization & Outcome \\
 \midrule
-Neural RQ-VAE, six variants & $<$10\% & Collapsed \\
+Neural RQ-VAE variants & $<$10\% & Codebook collapse \\
 k-means fallback A & 99.8\% & R@10 = 0.1230, 15\% reachability \\
 k-means fallback B & 99.8\% & R@10 = 0.1932, 52\% reachability \\
 \bottomrule
 \end{tabular}
-\caption{Tokenization configurations. Neural RQ-VAE collapsed in all tested configurations; k-means improved utilization but remained sensitive to decoder training.}
+\caption{Tokenization diagnostics. Neural RQ-VAE collapsed in the tested configurations; k-means improved utilization but remained sensitive to decoder training and beam-search support.}
 \label{tab:tokenization}
 \end{table}
 
-\subsection{Dynamic Catalog Implication}
+\section{Dynamic Catalog Protocol}
+\label{app:dynamic}
 
-CQG-Rec naturally supports retraining-free item updates. A new item is encoded into the frozen item space and inserted into the ANN index. No output vocabulary, codebook, or trie needs to be rebuilt. This property is conceptually separate from recommendation accuracy: a new item is reachable immediately, although ranking it well still depends on whether user histories provide evidence for the corresponding preference.
+CQG-Rec naturally supports retraining-free item updates. A new item is encoded into the frozen item space and inserted into the ANN index. No output vocabulary, codebook, or trie needs to be rebuilt. In contrast, a SID system must assign the new item to a code path. If the assignment changes the code distribution or causes collisions, the codebook, trie, and decoder may need to be refreshed. In our planned dynamic-catalog evaluation, we hold out a fraction of items during training, insert them into the retrieval index only at test time, and measure new-item Recall@$K$, warm-item Recall@$K$, index update cost, and whether model retraining is required.
+
+\section{What Was Merged from the Two Drafts}
+\label{app:merge_audit}
+
+The current paper uses the July 18 CQG-Rec draft as the primary narrative source: reachability ceiling, popularity-stratified analysis, crossover phenomenon, CQG-Rec training objectives, and the ML-1M comparison. It incorporates the main contribution of the auxiliary main-plus-appendix draft as supporting systems evidence: CQG as a retrieve-and-rerank candidate generator, cross-dataset pipeline results, non-learned retrieval controls, LLM diagnostic results, and loss/tokenization ablations.
+
+Some material was intentionally compressed or removed from the main body. Earlier exploratory framing around CERT-Rec and embedding trees is not presented as a claimed method because the current empirical paper is centered on CQG-Rec as the clean vocabulary-free probe. Engineering notes, failed prompts, redundant intermediate tables, and speculative claims about large-scale LLM deployment were also removed or moved into appendix-style diagnostic language. The retained version is therefore not a literal concatenation of both PDFs; it is a unified paper that keeps the defensible claims and demotes exploratory or weakly supported material.
 
 \end{document}
