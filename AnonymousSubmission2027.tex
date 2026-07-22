@@ -29,18 +29,16 @@
 \maketitle
 
 \begin{abstract}
-Generative recommendation (GR) has recently emerged as a powerful paradigm, retrieving items by autoregressively decoding discrete Semantic IDs (SIDs) over learned codebooks. While this paradigm has demonstrated competitive performance, it fundamentally relies on beam search for inference---a strategy with known theoretical constraints. In this paper, we identify and characterize a structural bottleneck in SID-based models: the Beam Search Reachability Ceiling. We provide empirical and theoretical evidence that tree-structured autoregressive generation imposes rigid correlation constraints, which inherently limit the model's ability to represent arbitrary item distributions. Specifically, we quantify that the reachability of tail or sparse items is up to three times lower than that of popular items in standard SID frameworks. To systematically investigate this phenomenon, we propose CQG-Rec, a minimal vocabulary-free analytical probe that replaces discrete token generation with continuous query generation in a stable, frozen embedding space. Through controlled experiments across multiple standard benchmarks, we reveal a distinct ``Crossover Phenomenon'': while SID-based models excel at extremely shallow top-K retrieval, CQG-Rec consistently outperforms them in deep retrieval and long-tail coverage without the need for codebook training or complex beam search. Our findings establish that the reachability ceiling is a structural property of the decoding mechanism itself rather than an implementation artifact. This study challenges the necessity of vocabulary infrastructure in generative recommendation and points toward continuous representation as a more robust path for scaling to massive, dynamic catalogs.
+Generative recommendation (GR) has recently emerged as a powerful paradigm, retrieving items by autoregressively decoding discrete Semantic IDs (SIDs) over learned codebooks. While this paradigm has demonstrated competitive performance, it fundamentally relies on beam search for inference. In this paper, we study a structural bottleneck in SID-based models: the Beam Search Reachability Ceiling. Motivated by recent expressiveness analyses of autoregressive SID generation, we empirically examine how a constrained code-tree decoder distributes retrieval support across items. We find that raw beam coverage is highly skewed by item popularity in standard SID-style models, suggesting that tail items can receive substantially less retrieval support than popular items. To isolate the role of the discrete output interface, we propose CQG-Rec, a minimal vocabulary-free analytical probe that replaces discrete token generation with continuous query generation in a stable, frozen embedding space. Through controlled experiments across standard benchmarks, we observe a depth-dependent ``Crossover Phenomenon'': SID-based models can be competitive at shallow top-K retrieval, while CQG-Rec becomes more favorable in deeper retrieval and coverage-oriented settings without codebook training or beam search. Our findings challenge the assumption that Semantic IDs are necessary infrastructure for generative recommendation and motivate continuous retrieval interfaces for massive, dynamic catalogs.
 \end{abstract}
-
-\noindent\textbf{TL;DR.} Identifying the Reachability Ceiling of Semantic IDs, we propose CQG-Rec, a vocabulary-free regime using continuous queries to enable retraining-free updates and superior long-tail retrieval via a Crossover Phenomenon.
 
 \section{Introduction}
 
 Generative recommendation retrieves items by generating symbolic identifiers rather than directly scoring the entire catalog. The most influential instance of this paradigm is Semantic-ID (SID) recommendation: items are first quantized into discrete code sequences, and an autoregressive model decodes those sequences conditioned on user history \citep{rajput2023tiger,zheng2024letter,wang2024eager}. This formulation is attractive because it converts recommendation into a familiar sequence-generation problem. It also supports constrained decoding through a trie, ensuring that the generated token sequence corresponds to a valid item.
 
-However, the same discrete infrastructure also creates a structural bottleneck. SID systems depend on beam search at inference time. Beam search explores only a prefix-limited subset of the exponentially large code tree, and recent theoretical work shows that constrained beam decoding has inherent reachability limits in generative retrieval \citep{wu2025beam,hou2026expressiveness}. In other words, an item can have a valid SID and still receive zero retrieval probability if its path never enters the beam. This distinction is important: code assignment and code retrieval are different problems.
+However, the same discrete infrastructure also creates a structural bottleneck. SID systems depend on beam search at inference time. Beam search explores only a prefix-limited subset of the exponentially large code tree, and recent theoretical work shows that autoregressive tree generation imposes nontrivial expressiveness constraints \citep{hou2026expressiveness}. In other words, an item can have a valid SID and still receive zero retrieval probability if its path never enters the beam. This distinction is important: code assignment and code retrieval are different problems.
 
-This paper asks a concrete question: \emph{how does the beam-search reachability ceiling manifest in standard recommendation benchmarks?} Aggregate Recall@K does not answer this question, because it mixes popular and rare items. We therefore measure reachability at the item level and stratify by training frequency. The result is striking. On ML-1M, a TIGER-style SID model with beam width 100 reaches 70.8\% of popular items but only 24.0\% of rare items, a 2.95$\times$ gap. At the same time, code collisions are negligible: 99.4\% of items receive unique codes. The bottleneck is thus not mainly codebook capacity; it is inference-side exploration.
+This paper asks a concrete question: \emph{how does the beam-search reachability ceiling manifest in standard recommendation benchmarks?} Aggregate Recall@K does not answer this question, because it mixes popular and rare items. We therefore measure item-level beam coverage and stratify it by training frequency. On ML-1M, a TIGER-style SID model with beam width 100 reaches 63.8\% of catalog items overall, and the raw coverage is much lower for rare items than for popular items. At the same time, code collisions are negligible: 99.4\% of items receive unique codes. This suggests that the bottleneck is not only codebook capacity; inference-side exploration also matters. Because raw item coverage is affected by the number of test users associated with each popularity stratum, we treat exposure-normalized reachability as a required follow-up analysis rather than overclaiming the raw quartile gap.
 
 This popularity-dependent ceiling creates a second empirical pattern that we call the \emph{Crossover Phenomenon}. At very shallow retrieval depth, SID models can still perform well because autoregressive decoding concentrates probability mass on high-confidence paths. On rare items in ML-1M, TIGER outperforms a continuous alternative at R@10. But as K increases, the beam exhausts its reachable set. A vocabulary-free continuous retriever continues to retrieve from the full catalog and overtakes SID retrieval at deeper K. On the rarest quartile, TIGER and the continuous model tie at R@90 = 0.2396, exactly matching TIGER's rare-item reachability ceiling.
 
@@ -60,7 +58,7 @@ Our contributions are:
 TIGER \citep{rajput2023tiger} introduced hierarchical Semantic IDs using residual vector quantization and autoregressive decoding. Subsequent work improves code learning, alignment, and model design: LETTER integrates collaborative semantics \citep{zheng2024letter}, EAGER introduces behavior-semantic collaboration \citep{wang2024eager}, IDGenRec studies textual IDs \citep{tan2024idgenrec}, DIGER proposes differentiable indexing \citep{fu2026diger}, and UniGRec explores soft identifiers \citep{li2026unigrec}. These methods differ in how identifiers are constructed and aligned, but they retain a discrete vocabulary interface and typically require constrained autoregressive decoding. Our work targets a shared property of this family: the reachability ceiling induced by beam search over a structured identifier space.
 
 \textbf{Reachability and expressiveness limits.}
-Theoretical work has begun to formalize limitations of tree-structured generative retrieval. \citet{wu2025beam} prove error lower bounds for constrained beam search, while \citet{hou2026expressiveness} show that autoregressive tree generation imposes correlation constraints that limit representable item distributions. These analyses establish the existence of a structural ceiling. We complement them by measuring the ceiling empirically, showing that it is strongly popularity-dependent and that it creates a depth-dependent crossover in retrieval quality.
+Theoretical work has begun to formalize limitations of tree-structured generative retrieval. \citet{hou2026expressiveness} show that autoregressive tree generation imposes correlation constraints that limit representable item distributions. This analysis motivates our empirical question: how do support constraints appear in practical SID-style recommendation pipelines? We complement this line of work by measuring raw beam coverage and retrieval-depth behavior under controlled comparisons.
 
 \textbf{Popularity bias in SID systems.}
 Recent work also studies training-side popularity bias. For example, tail tokens may receive fewer updates under maximum-likelihood training, motivating modified objectives or tokenization schemes. Our analysis is complementary: even when code assignment succeeds, code retrieval can fail. In our ML-1M experiments, 99.4\% of items receive unique codes, yet only 63.8\% are ever reachable under beam width 100. This separates training-side code quality from inference-side exploration.
@@ -151,7 +149,7 @@ Figure~\ref{fig:pipeline} compares the two inference mechanisms. SID retrieval r
 \subsection{Experimental Setup}
 
 \textbf{Datasets.}
-We use MovieLens-1M (ML-1M), Amazon Beauty, Amazon Sports, and Yelp. ML-1M is the primary reachability benchmark because its catalog is small enough for exact full-catalog analysis. Beauty and Sports test cross-domain behavior. Yelp provides a larger 112K-item catalog for scalability experiments.
+We use MovieLens-1M (ML-1M), Amazon Beauty, and Amazon Sports in the current main-result tables. ML-1M is the primary reachability benchmark because its catalog is small enough for exact full-catalog analysis. Beauty and Sports test cross-domain behavior. Larger-catalog experiments on Yelp are treated as ongoing scalability stress tests and are not included in the current main-result table.
 
 \begin{table}[t]
 \centering
@@ -163,10 +161,9 @@ Dataset & Users & Items & Interactions & Density \\
 ML-1M & 6,040 & 3,417 & 999K & 4.84\% \\
 Beauty & 22,363 & 12,102 & 198K & 0.07\% \\
 Sports & 21,519 & 10,694 & $\sim$178K & 0.08\% \\
-Yelp & 45,478 & 112,389 & 1.8M & 0.03\% \\
 \bottomrule
 \end{tabular}
-\caption{Dataset statistics.}
+\caption{Dataset statistics for datasets reported in the current main tables.}
 \label{tab:data}
 \end{table}
 
@@ -178,14 +175,16 @@ We compare against SASRec \citep{kang2018sasrec}, GRU4Rec \citep{hidasi2016gru4r
 
 \subsection{Beam Search Reachability Ceiling}
 
-For a fixed SID model and beam width, we define an item as \emph{reachable} if it appears in at least one beam output over the test users. This measures whether the inference procedure can ever retrieve the item. On ML-1M, a TIGER-style model with beam width 100 reaches 63.8\% of items overall. The ceiling is highly nonuniform across item popularity quartiles (Table~\ref{tab:reachability}).
+For a fixed SID model and beam width, we define raw item coverage as the fraction of catalog items that appear in at least one beam output over the test users. This diagnostic measures whether the inference procedure retrieves an item anywhere in the evaluation set. On ML-1M, a TIGER-style model with beam width 100 covers 63.8\% of catalog items overall. The raw coverage is highly nonuniform across item popularity quartiles (Table~\ref{tab:reachability}).
+
+This raw metric has an important confound: popular-item quartiles have more associated test users, and therefore more opportunities to appear in the union of beam outputs. We therefore interpret Table~\ref{tab:reachability} as a diagnostic signal rather than as a final causal estimate of popularity-dependent reachability. A stricter exposure-normalized variant can be obtained either by subsampling the same number of users per quartile or by reporting per-user normalized beam support.
 
 \begin{table}[t]
 \centering
 \small
 \begin{tabular}{lrrr}
 \toprule
-Quartile & Users & \% Test & Beam Reachable \\
+Quartile & Users & \% Test & Raw Beam Coverage \\
 \midrule
 Q1 rare & 192 & 3.2 & 24.0\% \\
 Q2 & 582 & 9.6 & 47.1\% \\
@@ -195,18 +194,18 @@ Q4 popular & 3,945 & 65.3 & 70.8\% \\
 Overall & 6,040 & 100.0 & 63.8\% \\
 \bottomrule
 \end{tabular}
-\caption{TIGER beam-search reachability by popularity quartile on ML-1M with beam width 100. Rare items are nearly three times less reachable than popular items. CQG-Rec has 100\% item reachability by design.}
+\caption{Raw TIGER beam coverage by popularity quartile on ML-1M with beam width 100. The raw gap is confounded by unequal exposure counts across quartiles; exposure-normalized reachability is required before treating this as a causal popularity effect. CQG-Rec can score every encoded item by design.}
 \label{tab:reachability}
 \end{table}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{Figures/fig3_reachability.pdf}
-\caption{Beam-search reachability is strongly popularity-dependent. TIGER reaches substantially fewer rare items than popular items even though code collisions are negligible.}
+\caption{Raw beam coverage is skewed across popularity quartiles. The figure is a diagnostic motivating exposure-normalized reachability analysis, not a standalone causal estimate.}
 \label{fig:reachability}
 \end{figure}
 
-This result separates two failure modes. The RQ-VAE code assignment is almost complete: 99.4\% of ML-1M items receive unique codes. Yet 36.2\% of items are never found by beam search. The bottleneck is therefore not merely token collision or insufficient codebook size; it is the constrained decoding mechanism.
+This result separates two failure modes. The code assignment is almost complete: 99.4\% of ML-1M items receive unique codes. Yet 36.2\% of items are never found by beam search under this evaluation. The bottleneck is therefore not merely token collision or insufficient codebook size. However, the current evidence should be strengthened with exposure-normalized coverage and a beam-width sweep before making a final structural claim.
 
 \subsection{Crossover Phenomenon}
 
@@ -242,7 +241,7 @@ Aggregate & 6,040 & \textbf{0.3036} & 0.2992 & -- & -- & -- & -- \\
 
 \subsection{Overall ML-1M Comparison}
 
-Table~\ref{tab:ml1m} compares CQG-Rec variants and baselines on ML-1M. CE-frozen outperforms TIGER's single-seed result on both Recall@10 and NDCG@10 with fewer parameters and full item reachability. BPR-frozen and MSE-frozen are weaker but retain the same vocabulary-free and full-coverage properties.
+Table~\ref{tab:ml1m} compares CQG-Rec variants and baselines on ML-1M. CE-frozen is competitive with the current TIGER-style run and has a vocabulary-free retrieval interface. BPR-frozen and MSE-frozen are weaker but retain the same continuous retrieval property. Because the TIGER-style result is currently single-seed while CE-frozen is averaged over three seeds, we treat this table as preliminary until TIGER multi-seed runs are complete.
 
 \begin{table}[t]
 \centering
@@ -258,7 +257,7 @@ BPR-frozen & 3.2M & 0.2596 & 0.1360 \\
 MSE-frozen & 3.2M & 0.2482 & 0.1424 \\
 \bottomrule
 \end{tabular}
-\caption{ML-1M overall comparison. CE-frozen uses three seeds; TIGER is single-seed. CE-frozen has 100\% item reachability, while TIGER reaches 63.8\% of items under beam width 100.}
+\caption{ML-1M overall comparison. CE-frozen uses three seeds; TIGER is currently single-seed and is being expanded to the same seed protocol.}
 \label{tab:ml1m}
 \end{table}
 
@@ -335,7 +334,7 @@ InfoNCE & 0.2386 & 85.3\% \\
 
 \subsection{LLM Backbone Investigation}
 
-We also tested whether a pretrained LLM backbone improves continuous query generation. Seven Qwen2.5-7B configurations across three paradigms consumed 23 GPU-hours. The result was negative but informative. Shared dual-tower training collapsed item representations, with item-item cosine similarity increasing toward 0.9936. A frozen-item hybrid avoided item collapse but produced loss-metric decoupling: InfoNCE loss improved while Recall@10 remained only 18\% of the SASRec gate. A text-aware hybrid performed best, reaching R@10 = 0.2118 on ML-1M, but still trailed the 3.2M scratch Transformer by 12.7\%.
+We also tested whether a pretrained LLM backbone improves continuous query generation. Multiple Qwen configurations across three paradigms produced a negative but informative result. Shared dual-tower training collapsed item representations, with item-item cosine similarity increasing toward 0.9936. A frozen-item hybrid avoided item collapse but produced loss-metric decoupling: InfoNCE loss improved while Recall@10 remained far below the SASRec gate. A text-aware hybrid performed best, reaching R@10 = 0.2118 on ML-1M, but still trailed the 3.2M scratch Transformer.
 
 \begin{figure}[t]
 \centering
@@ -348,11 +347,11 @@ This analysis does not imply that LLMs cannot be used for recommendation. Rather
 
 \subsection{Tokenization Instability}
 
-The auxiliary experiments also expose fragility in discrete tokenization. Six neural RQ-VAE configurations collapsed to degenerate codebooks with less than 10\% utilization. A k-means fallback achieved high code utilization but showed large downstream variance depending on decoder configuration. This supports the broader argument: SID pipelines contain multiple coupled components---tokenizer, decoder, beam search, and lookup---and failures in any component can limit retrieval.
+The auxiliary experiments also expose fragility in our discrete tokenization implementation. Several neural RQ-VAE configurations collapsed to degenerate codebooks with less than 10\% utilization. A k-means fallback achieved high code utilization but showed large downstream variance depending on decoder configuration. We do not use these failures as evidence that all SID methods are weak; rather, they motivate careful baseline validation against published TIGER, LETTER, and EAGER results.
 
 \subsection{Scalability}
 
-CE-frozen requires full-catalog softmax and is therefore appropriate for catalogs up to roughly tens of thousands of items. BPR-frozen scales to larger catalogs and was used for the 112K-item Yelp setting, but it trades off accuracy. In production-scale systems, the natural next step is sampled softmax, cached ANN hard negatives, or ANN-accelerated contrastive training. Importantly, the inference interface remains scalable: once a query is generated, retrieval can use standard ANN infrastructure and new items can be inserted by adding their embeddings to the index.
+CE-frozen requires full-catalog softmax and is therefore appropriate for catalogs up to roughly tens of thousands of items. BPR-frozen and sampled-softmax variants are the scalable alternatives for larger catalogs, but they trade off accuracy. In production-scale systems, the natural next step is sampled softmax, cached ANN hard negatives, or ANN-accelerated contrastive training. Importantly, the inference interface remains scalable: once a query is generated, retrieval can use standard ANN infrastructure and new items can be inserted by adding their embeddings to the index.
 
 \begin{figure}[t]
 \centering
@@ -374,11 +373,11 @@ For static catalogs with strong top-10 precision requirements, SID methods remai
 
 \section{Limitations}
 
-Our study has several limitations. First, the strongest reachability and crossover analysis is conducted on ML-1M; cross-dataset confirmation of per-quartile reachability at larger scale remains ongoing. Second, CE-frozen uses full-catalog softmax, which does not scale directly to million-item training without sampling or ANN-negative approximations. Third, the TIGER comparison uses a single seed in the current draft, while CQG-Rec CE uses three seeds. Fourth, CQG-Rec depends on the quality of the frozen item embedding space; if that space fails to encode preference-relevant distinctions, continuous retrieval will inherit the error. Fifth, pretrained LLM backbones underperformed in our tested setting, so the present method uses a scratch Transformer rather than a large pretrained generator. Finally, SID methods may recover part of the tail gap through improved training objectives or tokenization, although such changes cannot remove beam-search support constraints without changing the inference mechanism itself.
+Our study has several limitations. First, the current quartile reachability table reports raw union-of-beams coverage and is confounded by unequal exposure counts across popularity groups; exposure-normalized analysis is needed for a causal popularity claim. Second, beam width is currently fixed at 100, so a complete characterization should report a beam-width sweep and its latency/coverage tradeoff. Third, the strongest reachability and crossover analysis is conducted on ML-1M; cross-dataset confirmation on Beauty or Sports is needed. Fourth, the TIGER-style comparison currently uses fewer seeds than CQG-Rec and uses a k-means SID construction rather than the full published TIGER content-embedding/RQ-VAE pipeline, so baseline fairness should be strengthened through multi-seed runs and comparison to published TIGER, LETTER, and EAGER numbers. Fifth, CE-frozen uses full-catalog softmax, which does not scale directly to million-item training without sampling or ANN-negative approximations. Finally, CQG-Rec depends on the quality of the frozen item embedding space; if that space fails to encode preference-relevant distinctions, continuous retrieval will inherit the error.
 
 \section{Conclusion}
 
-This paper identifies the Beam Search Reachability Ceiling as a practical bottleneck in SID-based generative recommendation. The ceiling is strongly popularity-dependent: rare items are up to three times less reachable than popular items. This structure induces a Crossover Phenomenon in which SID methods can win shallow precision, while vocabulary-free continuous retrieval catches up or surpasses them at deeper K and in long-tail coverage. CQG-Rec demonstrates that a minimal continuous-query generator in a frozen embedding space can remove codebooks, item vocabularies, and beam search while preserving strong recommendation quality. These findings challenge the assumption that Semantic IDs are necessary infrastructure for generative recommendation and suggest continuous representation as a scalable direction for dynamic catalogs.
+This paper studies the Beam Search Reachability Ceiling as a practical bottleneck in SID-based generative recommendation. Our current evidence shows that raw beam coverage is incomplete and skewed, and that a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Rec demonstrates that a minimal continuous-query generator in a frozen embedding space can remove codebooks, item vocabularies, and beam search while preserving competitive recommendation quality. These findings challenge the assumption that Semantic IDs are necessary infrastructure for generative recommendation and suggest continuous representation as a scalable direction for dynamic catalogs.
 
 \bibliography{references}
 
@@ -546,16 +545,9 @@ k-means fallback B & 99.8\% & R@10 = 0.1932, 52\% reachability \\
 \label{tab:tokenization}
 \end{table}
 
-\section{Dynamic Catalog Protocol}
+\section{Dynamic Catalog Discussion}
 \label{app:dynamic}
 
-CQG-Rec naturally supports retraining-free item updates. A new item is encoded into the frozen item space and inserted into the ANN index. No output vocabulary, codebook, or trie needs to be rebuilt. In contrast, a SID system must assign the new item to a code path. If the assignment changes the code distribution or causes collisions, the codebook, trie, and decoder may need to be refreshed. In our planned dynamic-catalog evaluation, we hold out a fraction of items during training, insert them into the retrieval index only at test time, and measure new-item Recall@$K$, warm-item Recall@$K$, index update cost, and whether model retraining is required.
-
-\section{What Was Merged from the Two Drafts}
-\label{app:merge_audit}
-
-The current paper uses the July 18 CQG-Rec draft as the primary narrative source: reachability ceiling, popularity-stratified analysis, crossover phenomenon, CQG-Rec training objectives, and the ML-1M comparison. It incorporates the main contribution of the auxiliary main-plus-appendix draft as supporting systems evidence: CQG as a retrieve-and-rerank candidate generator, cross-dataset pipeline results, non-learned retrieval controls, LLM diagnostic results, and loss/tokenization ablations.
-
-Some material was intentionally compressed or removed from the main body. Earlier exploratory framing around CERT-Rec and embedding trees is not presented as a claimed method because the current empirical paper is centered on CQG-Rec as the clean vocabulary-free probe. Engineering notes, failed prompts, redundant intermediate tables, and speculative claims about large-scale LLM deployment were also removed or moved into appendix-style diagnostic language. The retained version is therefore not a literal concatenation of both PDFs; it is a unified paper that keeps the defensible claims and demotes exploratory or weakly supported material.
+CQG-Rec naturally supports retraining-free item updates. A new item is encoded into the frozen item space and inserted into the ANN index. No output vocabulary, codebook, or trie needs to be rebuilt. In contrast, a SID system must assign the new item to a code path. If the assignment changes the code distribution or causes collisions, the codebook, trie, and decoder may need to be refreshed. A direct dynamic-catalog evaluation would hold out a fraction of items during training, insert them into the retrieval index only at test time, and measure new-item Recall@$K$, warm-item Recall@$K$, index update cost, and whether model retraining is required.
 
 \end{document}
