@@ -383,7 +383,9 @@ This paper identifies the Beam Search Reachability Ceiling as a practical bottle
 \bibliography{references}
 
 \clearpage
+\onecolumn
 \appendix
+\setcounter{secnumdepth}{2}
 
 \section{Experimental Protocol and Reproducibility}
 \label{app:protocol}
@@ -411,7 +413,7 @@ where $\mathrm{Beam}_B(u)$ is the set of items decoded by beam search with beam 
 \subsection{Hyperparameters}
 \label{app:hparams}
 
-\begin{table*}[h]
+\begin{table}[!htbp]
 \centering
 \small
 \begin{tabular}{lrrrrrrl}
@@ -428,7 +430,7 @@ TIGER-style SID decoder & 384 & 4 & 6 & 1e-3 & 256 & 50K steps & Autoregressive 
 \end{tabular}
 \caption{Training hyperparameters used in the current experiments. Sequence length is 50 for ML-1M and LastFM, and 20 for Beauty, Sports, and Electronics.}
 \label{tab:hparams}
-\end{table*}
+\end{table}
 
 \subsection{CQG-Rec Dataloader}
 \label{app:cqg_dataloader}
@@ -483,7 +485,7 @@ The SID decoder dataloader uses the same history-target pairs as CQG-Rec, but re
 \subsection{Temperature Ablation}
 \label{app:temperature}
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering
 \small
 \begin{tabular}{lrr}
@@ -508,7 +510,7 @@ The CE objective benefits from catalog-complete visibility on smaller catalogs b
 \section{LLM Backbone Diagnostic}
 \label{app:llm}
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering
 \small
 \begin{tabular}{lrrrrrr}
@@ -528,7 +530,7 @@ We tested pretrained LLM-style backbones as continuous query generators. The bes
 \section{Tokenization Diagnostics}
 \label{app:tokenization}
 
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering
 \small
 \begin{tabular}{lll}
