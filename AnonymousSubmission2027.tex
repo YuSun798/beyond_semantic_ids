@@ -408,6 +408,27 @@ This paper studies the Beam Search Reachability Ceiling as a practical bottlenec
 \appendix
 \setcounter{secnumdepth}{2}
 
+\section{Completed Additional Experiments}
+\label{app:auto-completed}
+% BEGIN AUTO_RESULTS
+This appendix section is automatically updated from completed AutoDL runs. Rows are added only after a result JSON is present on disk; running jobs are not reported as final results.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{llrrrrr}
+\toprule
+Dataset & Seed & R@10 & N@10 & R@30 & R@90 & Reach. \\
+\midrule
+beauty & 43 & 0.0436 & 0.0250 & 0.0742 & 0.1240 & 12.76\% \\
+\bottomrule
+\end{tabular}
+\caption{Automatically synchronized completed TIGER-style SID runs. These rows support the multi-seed and cross-dataset fairness analysis; final main-table aggregation should use mean and standard deviation across completed seeds.}
+\label{tab:auto-tiger-results}
+\end{table}
+
+% END AUTO_RESULTS
+
 \section{Experimental Protocol and Reproducibility}
 \label{app:protocol}
 
