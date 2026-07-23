@@ -382,6 +382,10 @@ CE-frozen requires full-catalog softmax and is therefore appropriate for catalog
 \label{fig:ce_mse}
 \end{figure}
 
+% BEGIN AUTO_CORE_SUMMARY
+% Core-result auto summary pending. Missing: ml1m_beam_sweep_s43, sports_mm_tiger_s42
+% END AUTO_CORE_SUMMARY
+
 \section{Discussion}
 
 \textbf{What the ceiling means.}
@@ -400,6 +404,10 @@ Our study has several limitations. First, although exposure-normalized subsampli
 \section{Conclusion}
 
 This paper studies the Beam Search Reachability Ceiling as a practical bottleneck in SID-based generative recommendation. Our evidence shows that beam coverage is incomplete and remains popularity-skewed after exposure-normalized subsampling, and that a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Rec demonstrates that a minimal continuous-query generator in a frozen embedding space can remove codebooks, item vocabularies, and beam search while preserving competitive recommendation quality. These findings challenge the assumption that Semantic IDs are necessary infrastructure for generative recommendation and suggest continuous representation as a scalable direction for dynamic catalogs.
+
+% BEGIN AUTO_CONCLUSION
+% Auto conclusion pending until core experiments complete.
+% END AUTO_CONCLUSION
 
 \bibliography{references}
 
@@ -420,11 +428,32 @@ This appendix section is automatically updated from completed AutoDL runs. Rows 
 \toprule
 Dataset & Seed & R@10 & N@10 & R@30 & R@90 & Reach. \\
 \midrule
+beauty & 42 & 0.0454 & 0.0265 & 0.0840 & 0.1356 & 14.00\% \\
 beauty & 43 & 0.0436 & 0.0250 & 0.0742 & 0.1240 & 12.76\% \\
+beauty & 44 & 0.0480 & 0.0278 & 0.0902 & 0.1508 & 15.70\% \\
+sports & 42 & 0.0220 & 0.0110 & 0.0436 & 0.0896 & 9.56\% \\
+sports & 43 & 0.0250 & 0.0127 & 0.0508 & 0.1012 & 10.76\% \\
+sports & 44 & 0.0264 & 0.0137 & 0.0532 & 0.1072 & 11.28\% \\
 \bottomrule
 \end{tabular}
 \caption{Automatically synchronized completed TIGER-style SID runs. These rows support the multi-seed and cross-dataset fairness analysis; final main-table aggregation should use mean and standard deviation across completed seeds.}
 \label{tab:auto-tiger-results}
+\end{table}
+
+\paragraph{Sports multimodal runs.}
+The multimodal Sports embedding build completed with image encoder `torchvision_resnet18_imagenet`. If this field indicates an untrained fallback, the result should be treated as diagnostic rather than a final multimodal claim.
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Run & R@10 & N@10 & R@90 & Reach. \\
+\midrule
+sports-mm-cqg-ce-s42 & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\caption{Automatically synchronized Sports multimodal results. CQG and SID use the same fused item embedding space.}
+\label{tab:auto-sports-mm}
 \end{table}
 
 % END AUTO_RESULTS
