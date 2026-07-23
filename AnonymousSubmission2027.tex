@@ -38,7 +38,7 @@ Generative recommendation retrieves items by generating symbolic identifiers rat
 
 However, the same discrete infrastructure also creates a structural bottleneck. SID systems depend on beam search at inference time. Beam search explores only a prefix-limited subset of the exponentially large code tree, and recent theoretical work shows that autoregressive tree generation imposes nontrivial expressiveness constraints \citep{hou2026expressiveness}. In other words, an item can have a valid SID and still receive zero retrieval probability if its path never enters the beam. This distinction is important: code assignment and code retrieval are different problems.
 
-This paper asks a concrete question: \emph{how does the beam-search reachability ceiling manifest in standard recommendation benchmarks?} Aggregate Recall@K does not answer this question, because it mixes popular and rare items. We therefore measure item-level beam coverage and stratify it by training frequency. On ML-1M, a TIGER-style SID model with beam width 100 reaches 63.8\% of catalog items overall, and the raw coverage is much lower for rare items than for popular items. At the same time, code collisions are negligible: 99.4\% of items receive unique codes. This suggests that the bottleneck is not only codebook capacity; inference-side exploration also matters. Because raw item coverage is affected by the number of test users associated with each popularity stratum, we report it as a diagnostic and avoid treating the raw quartile gap as a causal estimate.
+This paper asks a concrete question: \emph{how does the beam-search reachability ceiling manifest in standard recommendation benchmarks?} Aggregate Recall@K does not answer this question, because it mixes popular and rare items. We therefore measure item-level beam coverage and stratify it by training frequency. On ML-1M, a TIGER-style SID model with beam width 100 reaches 63.8\% of catalog items overall, and the raw coverage is much lower for rare items than for popular items. At the same time, code collisions are negligible: 99.4\% of items receive unique codes. This suggests that the bottleneck is not only codebook capacity; inference-side exploration also matters. To control for unequal exposure opportunities across popularity strata, we additionally report an exposure-normalized variant that subsamples the same number of target items per quartile. The normalized gap remains large on both ML-1M and Sports.
 
 This support limitation creates a second empirical pattern that we call the \emph{Crossover Phenomenon}. At very shallow retrieval depth, SID models can still perform well because autoregressive decoding concentrates probability mass on high-confidence paths. On rare items in ML-1M, TIGER outperforms a continuous alternative at R@10. But as K increases, the beam exhausts its reachable set. A vocabulary-free continuous retriever continues to retrieve from the full catalog and overtakes SID retrieval at deeper K. On the rarest quartile, TIGER and the continuous model tie at R@90 = 0.2396, matching the measured rare-item support under the current beam setting.
 
@@ -46,7 +46,7 @@ To isolate this mechanism, we propose \textbf{CQG-Rec} (Continuous Query Generat
 
 Our contributions are:
 \begin{itemize}
-    \item \textbf{Beam-support diagnostics.} We empirically quantify how beam-search support varies across the item popularity spectrum and identify a raw coverage skew that requires exposure-normalized follow-up.
+    \item \textbf{Beam-support diagnostics.} We empirically quantify how beam-search support varies across the item popularity spectrum and show that the skew remains after exposure-normalized quartile subsampling.
     \item \textbf{Crossover Phenomenon.} We identify a depth-dependent tradeoff: SID decoding can win at shallow top-K precision, but continuous retrieval overtakes at deeper K as the beam-search ceiling binds.
     \item \textbf{Vocabulary-free analytical probe.} We introduce CQG-Rec, a minimal continuous-query recommender that removes codebook training, item tokenization, beam search, and vocabulary maintenance.
     \item \textbf{Controlled empirical study.} Across ML-1M, Amazon Beauty, and Amazon Sports, we analyze retrieval quality, reranked performance, loss functions, LLM backbone failures, tokenization instability, and scalability.
@@ -58,10 +58,10 @@ Our contributions are:
 TIGER \citep{rajput2023tiger} introduced hierarchical Semantic IDs using residual vector quantization and autoregressive decoding. Subsequent work improves code learning, alignment, and model design: LETTER integrates collaborative semantics \citep{zheng2024letter}, EAGER introduces behavior-semantic collaboration \citep{wang2024eager}, IDGenRec studies textual IDs \citep{tan2024idgenrec}, DIGER proposes differentiable indexing \citep{fu2026diger}, and UniGRec explores soft identifiers \citep{li2026unigrec}. These methods differ in how identifiers are constructed and aligned, but they retain a discrete vocabulary interface and typically require constrained autoregressive decoding. Our work targets a shared property of this family: the reachability ceiling induced by beam search over a structured identifier space.
 
 \textbf{Reachability and expressiveness limits.}
-Theoretical work has begun to formalize limitations of tree-structured generative retrieval. \citet{hou2026expressiveness} show that autoregressive tree generation imposes correlation constraints that limit representable item distributions. This analysis motivates our empirical question: how do support constraints appear in practical SID-style recommendation pipelines? We complement this line of work by measuring raw beam coverage and retrieval-depth behavior under controlled comparisons.
+Theoretical work has begun to formalize limitations of tree-structured generative retrieval. \citet{hou2026expressiveness} show that autoregressive tree generation imposes correlation constraints that limit representable item distributions. This analysis motivates our empirical question: how do support constraints appear in practical SID-style recommendation pipelines? We complement this line of work by measuring beam coverage, exposure-normalized reachability, and retrieval-depth behavior under controlled comparisons.
 
 \textbf{Popularity bias in SID systems.}
-Recent work also studies training-side popularity bias. For example, tail tokens may receive fewer updates under maximum-likelihood training, motivating modified objectives or tokenization schemes. Our analysis is complementary: even when code assignment succeeds, code retrieval can fail. In our ML-1M experiments, 99.4\% of items receive unique codes, yet only 63.8\% are ever reachable under beam width 100. This separates training-side code quality from inference-side exploration.
+Recent work also studies training-side popularity bias. For example, tail tokens may receive fewer updates under maximum-likelihood training, motivating modified objectives or tokenization schemes. Our analysis is complementary: even when code assignment succeeds, code retrieval can fail. In our ML-1M experiments, 99.4\% of items receive unique codes, yet only 63.8\% are ever reachable under beam width 100. After exposure normalization, popular-quartile items still show substantially higher reachability than rare-quartile items. This separates training-side code quality from inference-side exploration.
 
 \textbf{Vocabulary-free and continuous recommendation.}
 Continuous alternatives avoid discrete item vocabularies. DiffuRec \citep{li2023diffurec}, DreamRec \citep{yang2023dreamrec}, and ContRec \citep{qu2026contrec} use diffusion or continuous latent generation. GPT4Rec \citep{li2023gpt4rec} generates textual queries for retrieval. CQG-Rec occupies a deliberately simpler point in the design space: it generates a dense query vector directly in a frozen item embedding space and retrieves with dense scoring or ANN. The main contribution is not that continuous retrieval exists, but that a minimal continuous probe reveals the SID reachability ceiling and the crossover behavior.
@@ -177,7 +177,7 @@ We compare against SASRec \citep{kang2018sasrec}, GRU4Rec \citep{hidasi2016gru4r
 
 For a fixed SID model and beam width, we define raw item coverage as the fraction of catalog items that appear in at least one beam output over the test users. This diagnostic measures whether the inference procedure retrieves an item anywhere in the evaluation set. On ML-1M, a TIGER-style model with beam width 100 covers 63.8\% of catalog items overall. The raw coverage is highly nonuniform across item popularity quartiles (Table~\ref{tab:reachability}).
 
-This raw metric has an important confound: popular-item quartiles have more associated test users, and therefore more opportunities to appear in the union of beam outputs. We therefore interpret Table~\ref{tab:reachability} as a diagnostic signal rather than as a final causal estimate of popularity-dependent reachability. A stricter exposure-normalized variant can be obtained either by subsampling the same number of users per quartile or by reporting per-user normalized beam support.
+This raw metric has an important confound: popular-item quartiles have more associated test users, and therefore more opportunities to appear in the union of beam outputs. We therefore also compute an exposure-normalized estimate by repeatedly subsampling the same number of target items from each popularity quartile and measuring whether each sampled item appears in any test-user beam output. Table~\ref{tab:exposure-normalized} shows that the skew remains after normalization. On ML-1M, normalized reachability increases from 25.3\% for the rarest quartile to 70.9\% for the most popular quartile. On Sports, where the catalog is sparser, the corresponding values are 0.39\% and 15.46\%. Thus, unequal exposure opportunities amplify the raw gap, but they do not fully explain it.
 
 \begin{table}[t]
 \centering
@@ -194,18 +194,40 @@ Q4 popular & 3,945 & 65.3 & 70.8\% \\
 Overall & 6,040 & 100.0 & 63.8\% \\
 \bottomrule
 \end{tabular}
-\caption{Raw TIGER beam coverage by popularity quartile on ML-1M with beam width 100. The raw gap is confounded by unequal exposure counts across quartiles; exposure-normalized reachability is required before treating this as a causal popularity effect. CQG-Rec can score every encoded item by design.}
+\caption{Raw TIGER beam coverage by popularity quartile on ML-1M with beam width 100. The raw gap is affected by unequal exposure counts across quartiles, so Table~\ref{tab:exposure-normalized} reports a normalized variant. CQG-Rec can score every encoded item by design.}
 \label{tab:reachability}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{llrr}
+\toprule
+Dataset & Quartile & Norm. Reachability & Std. \\
+\midrule
+ML-1M & Q1 rare & 25.3\% & 0.0\% \\
+ML-1M & Q2 & 46.2\% & 2.9\% \\
+ML-1M & Q3 & 54.8\% & 3.6\% \\
+ML-1M & Q4 popular & 70.9\% & 3.4\% \\
+\midrule
+Sports & Q1 rare & 0.39\% & 0.36\% \\
+Sports & Q2 & 2.38\% & 0.88\% \\
+Sports & Q3 & 4.64\% & 1.32\% \\
+Sports & Q4 popular & 15.46\% & 2.31\% \\
+\bottomrule
+\end{tabular}
+\caption{Exposure-normalized beam reachability by popularity quartile. We repeatedly subsample the same number of target items per quartile and report mean and standard deviation over 200 trials. The popularity-dependent support gap persists after normalization.}
+\label{tab:exposure-normalized}
 \end{table}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{Figures/fig3_reachability.pdf}
-\caption{Raw beam coverage is skewed across popularity quartiles. The figure is a diagnostic motivating exposure-normalized reachability analysis, not a standalone causal estimate.}
+\caption{Raw beam coverage is skewed across popularity quartiles. The same qualitative skew remains under the exposure-normalized analysis in Table~\ref{tab:exposure-normalized}.}
 \label{fig:reachability}
 \end{figure}
 
-This result separates two failure modes. The code assignment is almost complete: 99.4\% of ML-1M items receive unique codes. Yet 36.2\% of items are never found by beam search under this evaluation. The bottleneck is therefore not merely token collision or insufficient codebook size. However, the current evidence should be strengthened with exposure-normalized coverage and a beam-width sweep before making a final structural claim.
+This result separates two failure modes. The code assignment is almost complete: 99.4\% of ML-1M items receive unique codes. Yet 36.2\% of items are never found by beam search under this evaluation. The bottleneck is therefore not merely token collision or insufficient codebook size. The exposure-normalized analysis further shows that the support gap is not only a mechanical artifact of popular items having more test opportunities. A beam-width sweep remains necessary to characterize how quickly this ceiling relaxes as inference cost increases.
 
 \subsection{Crossover Phenomenon}
 
@@ -373,11 +395,11 @@ For static catalogs with strong top-10 precision requirements, SID methods remai
 
 \section{Limitations}
 
-Our study has several limitations. First, the current quartile reachability table reports raw union-of-beams coverage and is confounded by unequal exposure counts across popularity groups; exposure-normalized analysis is needed for a causal popularity claim. Second, beam width is currently fixed at 100, so a complete characterization should report a beam-width sweep and its latency/coverage tradeoff. Third, the strongest reachability and crossover analysis is conducted on ML-1M; cross-dataset confirmation on Beauty or Sports is needed. Fourth, the TIGER-style comparison currently uses fewer seeds than CQG-Rec and uses a k-means SID construction rather than the full published TIGER content-embedding/RQ-VAE pipeline, so baseline fairness should be strengthened through multi-seed runs and comparison to published TIGER, LETTER, and EAGER numbers. Fifth, CE-frozen uses full-catalog softmax, which does not scale directly to million-item training without sampling or ANN-negative approximations. Finally, CQG-Rec depends on the quality of the frozen item embedding space; if that space fails to encode preference-relevant distinctions, continuous retrieval will inherit the error.
+Our study has several limitations. First, although exposure-normalized subsampling reduces the most direct popularity-exposure confound, it is still an observational diagnostic rather than a causal intervention on user demand. Second, beam width is currently fixed at 100 in the main tables, so a complete characterization should report a beam-width sweep and its latency/coverage tradeoff. Third, the strongest crossover analysis is conducted on ML-1M; we include normalized reachability on Sports, but full cross-dataset crossover confirmation on Beauty and Sports remains ongoing. Fourth, the TIGER-style comparison currently uses fewer seeds than CQG-Rec and uses a k-means SID construction rather than the full published TIGER content-embedding/RQ-VAE pipeline, so baseline fairness should be strengthened through multi-seed runs and comparison to published TIGER, LETTER, and EAGER numbers. Fifth, CE-frozen uses full-catalog softmax, which does not scale directly to million-item training without sampling or ANN-negative approximations. Finally, CQG-Rec depends on the quality of the frozen item embedding space; if that space fails to encode preference-relevant distinctions, continuous retrieval will inherit the error.
 
 \section{Conclusion}
 
-This paper studies the Beam Search Reachability Ceiling as a practical bottleneck in SID-based generative recommendation. Our current evidence shows that raw beam coverage is incomplete and skewed, and that a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Rec demonstrates that a minimal continuous-query generator in a frozen embedding space can remove codebooks, item vocabularies, and beam search while preserving competitive recommendation quality. These findings challenge the assumption that Semantic IDs are necessary infrastructure for generative recommendation and suggest continuous representation as a scalable direction for dynamic catalogs.
+This paper studies the Beam Search Reachability Ceiling as a practical bottleneck in SID-based generative recommendation. Our evidence shows that beam coverage is incomplete and remains popularity-skewed after exposure-normalized subsampling, and that a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Rec demonstrates that a minimal continuous-query generator in a frozen embedding space can remove codebooks, item vocabularies, and beam search while preserving competitive recommendation quality. These findings challenge the assumption that Semantic IDs are necessary infrastructure for generative recommendation and suggest continuous representation as a scalable direction for dynamic catalogs.
 
 \bibliography{references}
 
@@ -405,6 +427,15 @@ For a user $u$ with held-out target item $i_u^\star$, Recall@$K$ is one if $i_u^
 \mathbf{1}\{i\in \cup_{u\in\mathcal{U}} \mathrm{Beam}_B(u)\},
 \]
 where $\mathrm{Beam}_B(u)$ is the set of items decoded by beam search with beam width $B$ for user $u$. This metric measures support coverage of the inference procedure, not ranking accuracy conditional on support.
+
+For exposure-normalized reachability, we first group target items by training-frequency quartile. Let $\mathcal{Q}_q$ be the items in quartile $q$ and let $m$ be the common sample size. For each trial, we uniformly sample $S_q\subseteq\mathcal{Q}_q$ with $|S_q|=m$ and compute:
+\[
+\mathrm{NormReachable}_q =
+\frac{1}{m}
+\sum_{i\in S_q}
+\mathbf{1}\{i\in \cup_{u\in\mathcal{U}} \mathrm{Beam}_B(u)\}.
+\]
+We report the mean and standard deviation over 200 trials. This controls the direct mechanical advantage that larger quartiles have in raw union-of-beams coverage.
 
 \section{Model and Training Details}
 \label{app:training}
