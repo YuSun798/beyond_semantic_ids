@@ -398,10 +398,25 @@ The priority AutoDL runs update the core empirical claims with completed multi-s
 
 For Beauty, the TIGER-style SID baseline over 3 seeds obtains R@10 0.0457 $\pm$ 0.0022, R@90 0.1368 $\pm$ 0.0134, and reachable rate 0.1415 $\pm$ 0.0148. The multi-seed runs reduce the risk that the SID comparison is an artifact of a single weak seed.
 For Sports, the TIGER-style SID baseline over 3 seeds obtains R@10 0.0245 $\pm$ 0.0022, R@90 0.0993 $\pm$ 0.0089, and reachable rate 0.1053 $\pm$ 0.0088. The multi-seed runs reduce the risk that the SID comparison is an artifact of a single weak seed.
-The ML-1M beam-width sweep is still pending. Until it completes, we keep the beam-width claim conservative: the current evidence supports a support bottleneck under beam width 100, while the sweep will quantify how much wider beams relax that bottleneck and at what inference cost.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Beam Width & R@10 & R@90 & Reach. & Sec. \\
+\midrule
+20 & 0.3050 & 0.3900 & 39.00\% & 11.2300 \\
+50 & 0.3060 & 0.5360 & 53.60\% & 21.5050 \\
+100 & 0.3060 & 0.6460 & 64.80\% & 39.2790 \\
+200 & 0.3060 & 0.6640 & 74.70\% & 76.7300 \\
+\bottomrule
+\end{tabular}
+\caption{ML-1M beam-width sweep for the TIGER-style SID decoder. The sweep directly tests whether increasing beam width removes or merely relaxes the reachability ceiling.}
+\label{tab:main-auto-beam-sweep}
+\end{table}
 
 In the Sports multimodal setting, both CQG-Rec and the SID decoder use the same fused image--collaborative item space. The CQG run obtains R@10 0.0326, while the multimodal SID run obtains R@10 0.0254. The fused embedding was built with torchvision_resnet18_imagenet. This isolates the retrieval-interface difference from the item-representation difference.
-% Missing core auto-sync inputs: ml1m_beam_sweep_s43
 % END AUTO_CORE_SUMMARY
 
 \section{Discussion}
@@ -424,7 +439,7 @@ Our study has several limitations. First, although exposure-normalized subsampli
 This paper studies the Beam Search Reachability Ceiling as a practical bottleneck in SID-based generative recommendation. Our evidence shows that beam coverage is incomplete and remains popularity-skewed after exposure-normalized subsampling, and that a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Rec demonstrates that a minimal continuous-query generator in a frozen embedding space can remove codebooks, item vocabularies, and beam search while preserving competitive recommendation quality. These findings challenge the assumption that Semantic IDs are necessary infrastructure for generative recommendation and suggest continuous representation as a scalable direction for dynamic catalogs.
 
 % BEGIN AUTO_CONCLUSION
-% Auto conclusion pending until core experiments complete.
+The completed core experiments strengthen the paper's central claim: the SID decoder's limitation is a support and interface problem, not merely a one-seed implementation artifact. Beauty and Sports now include three-seed TIGER-style SID runs; ML-1M and Sports include exposure-normalized reachability; and Sports includes a controlled multimodal comparison in a shared fused item space. In the beam-width sweep, increasing beam width from 20 to 200 changes the reachable set from 39.00\% to 74.70\%, making the cost--coverage tradeoff explicit rather than treating beam width as a fixed implementation detail.
 % END AUTO_CONCLUSION
 
 \bibliography{references}
@@ -454,6 +469,7 @@ electronics & 43 & 0.0276 & 0.0126 & 0.0572 & 0.1218 & 12.76\% \\
 electronics & 44 & 0.0296 & 0.0153 & 0.0600 & 0.1236 & 12.94\% \\
 lastfm & 42 & 0.0111 & 0.0052 & 0.0395 & 0.0821 & 8.21\% \\
 lastfm & 43 & 0.0172 & 0.0079 & 0.0375 & 0.0659 & 6.69\% \\
+lastfm & 44 & 0.0213 & 0.0111 & 0.0415 & 0.0750 & 7.60\% \\
 sports & 42 & 0.0220 & 0.0110 & 0.0436 & 0.0896 & 9.56\% \\
 sports & 43 & 0.0250 & 0.0127 & 0.0508 & 0.1012 & 10.76\% \\
 sports & 44 & 0.0264 & 0.0137 & 0.0532 & 0.1072 & 11.28\% \\
@@ -461,6 +477,23 @@ sports & 44 & 0.0264 & 0.0137 & 0.0532 & 0.1072 & 11.28\% \\
 \end{tabular}
 \caption{Automatically synchronized completed TIGER-style SID runs. These rows support the multi-seed and cross-dataset fairness analysis; final main-table aggregation should use mean and standard deviation across completed seeds.}
 \label{tab:auto-tiger-results}
+\end{table}
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+Beam Width & R@10 & R@90 & Reach. \\
+\midrule
+20 & 0.3050 & 0.3900 & 39.00\% \\
+50 & 0.3060 & 0.5360 & 53.60\% \\
+100 & 0.3060 & 0.6460 & 64.80\% \\
+200 & 0.3060 & 0.6640 & 74.70\% \\
+\bottomrule
+\end{tabular}
+\caption{Automatically synchronized ML-1M beam-width sweep. This table characterizes whether increasing beam width relaxes the reachability ceiling and at what retrieval-quality tradeoff.}
+\label{tab:auto-beam-sweep}
 \end{table}
 
 \paragraph{Sports multimodal runs.}
