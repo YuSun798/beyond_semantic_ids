@@ -173,6 +173,11 @@ We use leave-one-out evaluation: the last item is held out for testing, the seco
 \textbf{Baselines.}
 We compare against SASRec \citep{kang2018sasrec}, GRU4Rec \citep{hidasi2016gru4rec}, BERT4Rec \citep{sun2019bert4rec}, popularity ranking, TIGER-style SID retrieval \citep{rajput2023tiger}, and reported SID results from TIGER, LETTER, and EAGER where available. We also include non-learned dense retrieval baselines: random retrieval, last-item kNN, and mean-of-5 kNN.
 
+\textbf{Model training protocol.}
+CQG-Rec uses a two-stage frozen-space training protocol rather than jointly training the item encoder and the query generator. First, we train a standard sequential item representation model, implemented with SASRec in the main experiments, on the same chronological next-item prediction task used by the baselines. After training, we extract the SASRec item embedding matrix and treat it as the frozen retrieval space. In the multimodal Sports experiment, we augment this space by fusing SASRec item embeddings with ImageNet-pretrained ResNet-18 image features, then freeze the fused item vectors. Second, we train a decoder-only query generator that maps a user's item-history sequence to a continuous query vector in this frozen item space. The strongest CQG variant uses full-catalog cross-entropy: the generated query is dot-product scored against all frozen item embeddings, and the held-out next item is used as the positive class. We also evaluate MSE regression to the target item embedding and BPR-style contrastive training, but these objectives are weaker in our experiments. At inference time, the decoder produces a query vector, and retrieval is performed by dense scoring or ANN search over the frozen item embeddings. We deliberately avoid joint encoder--decoder training in the main study to keep the item space stable, isolate the retrieval-interface effect, and preserve the retraining-free insertion property for new items. Joint training of an item encoder and a query generator is a natural extension, but it would entangle item-space learning with the SID-versus-continuous interface comparison.
+
+\section{Results}
+
 \subsection{Beam Search Reachability Ceiling}
 
 For a fixed SID model and beam width, we define raw item coverage as the fraction of catalog items that appear in at least one beam output over the test users. This diagnostic measures whether the inference procedure retrieves an item anywhere in the evaluation set. On ML-1M, a TIGER-style model with beam width 100 covers 63.8\% of catalog items overall. The raw coverage is highly nonuniform across item popularity quartiles (Table~\ref{tab:reachability}).
@@ -385,7 +390,14 @@ CE-frozen requires full-catalog softmax and is therefore appropriate for catalog
 \subsection{Synchronized Core Results}
 \label{sec:auto-core-results}
 % BEGIN AUTO_CORE_SUMMARY
-% Core-result auto summary pending. Missing: ml1m_beam_sweep_s43
+The priority AutoDL runs update the core empirical claims with completed multi-seed SID baselines and a controlled Sports multimodal comparison. Beam-width diagnostics are still pending and are reported separately once available. The completed results sharpen the interpretation of the reachability ceiling in two ways.
+
+For Beauty, the TIGER-style SID baseline over three seeds obtains R@10 $0.0457 \pm 0.0022$, R@90 $0.1368 \pm 0.0135$, and reachable rate $0.1415 \pm 0.0147$. For Sports, the corresponding values are R@10 $0.0245 \pm 0.0022$, R@90 $0.0993 \pm 0.0090$, and reachable rate $0.1053 \pm 0.0088$. These results reduce the risk that the SID comparison is driven by a single weak random seed; the SID runs are consistently in the same performance range across seeds.
+
+The Sports multimodal experiment further supports the continuous-interface argument. We build a fused image--collaborative item space using ImageNet-pretrained ResNet-18 features and SASRec item embeddings, then compare CQG-Rec and TIGER-style SID retrieval on the same frozen item space. CQG-Rec obtains R@10 = 0.0326 and R@90 = 0.1154, while the multimodal SID run obtains R@10 = 0.0254 and R@90 = 0.0972. This controlled comparison suggests that CQG-Rec's advantage is not limited to purely collaborative embeddings; it also appears when the item space includes visual information.
+
+The ML-1M beam-width sweep is still pending. Until it completes, we keep the beam-width claim conservative: the current evidence supports a support bottleneck under beam width 100, while the sweep will quantify how much wider beams relax that bottleneck and at what inference cost.
+% Missing core auto-sync inputs: ml1m_beam_sweep_s43
 % END AUTO_CORE_SUMMARY
 
 \section{Discussion}
