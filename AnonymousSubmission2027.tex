@@ -38,7 +38,7 @@ Generative recommendation retrieves items by generating symbolic identifiers rat
 
 However, the same discrete infrastructure also creates a structural bottleneck. SID systems depend on beam search at inference time. Beam search explores only a prefix-limited subset of the exponentially large code tree, and recent theoretical work shows that autoregressive tree generation imposes nontrivial expressiveness constraints \citep{hou2026expressiveness}. In other words, an item can have a valid SID and still receive zero retrieval probability if its path never enters the beam. This distinction is important: code assignment and code retrieval are different problems.
 
-This paper asks a concrete question: \emph{how does the beam-search reachability ceiling manifest in standard recommendation benchmarks?} Aggregate Recall@K does not answer this question, because it mixes popular and rare items. We therefore measure item-level beam coverage and stratify it by training frequency. On ML-1M, a TIGER-style SID model with beam width 100 reaches 63.8\% of catalog items overall, and the raw coverage is much lower for rare items than for popular items. At the same time, code collisions are negligible: 99.4\% of items receive unique codes. This suggests that the bottleneck is not only codebook capacity; inference-side exploration also matters. To control for unequal exposure opportunities across popularity strata, we additionally report an exposure-normalized variant that subsamples the same number of target items per quartile. The normalized gap remains large on both ML-1M and Sports.
+This paper asks a concrete question: \emph{how does the beam-search reachability ceiling manifest in standard recommendation benchmarks?} Aggregate Recall@K does not answer this question, because it mixes popular and rare items. We therefore measure item-level beam coverage and stratify it by training frequency. We use TIGER \citep{rajput2023tiger}, a representative SID-based generative recommender that assigns items hierarchical semantic codes and decodes them autoregressively, as our main SID reference point. On ML-1M, a TIGER-style SID model with beam width 100 reaches 63.8\% of catalog items overall, and the raw coverage is much lower for rare items than for popular items. At the same time, code collisions are negligible: 99.4\% of items receive unique codes. This suggests that the bottleneck is not only codebook capacity; inference-side exploration also matters. To control for unequal exposure opportunities across popularity strata, we additionally report an exposure-normalized variant that subsamples the same number of target items per quartile. The normalized gap remains large on both ML-1M and Sports.
 
 This support limitation creates a second empirical pattern that we call the \emph{Crossover Phenomenon}. At very shallow retrieval depth, SID models can still perform well because autoregressive decoding concentrates probability mass on high-confidence paths. On rare items in ML-1M, TIGER outperforms a continuous alternative at R@10. But as K increases, the beam exhausts its reachable set. A vocabulary-free continuous retriever continues to retrieve from the full catalog and overtakes SID retrieval at deeper K. On the rarest quartile, TIGER and the continuous model tie at R@90 = 0.2396, matching the measured rare-item support under the current beam setting.
 
@@ -263,7 +263,7 @@ Aggregate & 6,040 & \textbf{0.3036} & 0.2992 & -- & -- & -- & -- \\
 
 \subsection{Overall ML-1M Comparison}
 
-Table~\ref{tab:ml1m} compares CQG-Rec variants and baselines on ML-1M. CE-frozen is competitive with the current TIGER-style run and has a vocabulary-free retrieval interface. BPR-frozen and MSE-frozen are weaker but retain the same continuous retrieval property. Because the TIGER-style result is currently single-seed while CE-frozen is averaged over three seeds, we treat this table as preliminary until TIGER multi-seed runs are complete.
+Table~\ref{tab:ml1m} compares CQG-Rec variants and baselines on ML-1M. CE-frozen is competitive with the current TIGER-style run and has a vocabulary-free retrieval interface. BPR-frozen and MSE-frozen are weaker but retain the same continuous retrieval property. The ML-1M TIGER number remains single-seed in the current table, while Beauty and Sports now include three-seed TIGER-style runs reported in Section~\ref{sec:auto-core-results}.
 
 \begin{table}[t]
 \centering
@@ -279,7 +279,7 @@ BPR-frozen & 3.2M & 0.2596 & 0.1360 \\
 MSE-frozen & 3.2M & 0.2482 & 0.1424 \\
 \bottomrule
 \end{tabular}
-\caption{ML-1M overall comparison. CE-frozen uses three seeds; TIGER is currently single-seed and is being expanded to the same seed protocol.}
+\caption{ML-1M overall comparison. CE-frozen uses three seeds; the current ML-1M TIGER-style result is single-seed, while Beauty and Sports TIGER-style runs have been expanded to three seeds.}
 \label{tab:ml1m}
 \end{table}
 
