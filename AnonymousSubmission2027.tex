@@ -392,11 +392,11 @@ CE-frozen requires full-catalog softmax and is therefore appropriate for catalog
 % BEGIN AUTO_CORE_SUMMARY
 The priority AutoDL runs update the core empirical claims with completed multi-seed SID baselines and a controlled Sports multimodal comparison. Beam-width diagnostics are still pending and are reported separately once available. The completed results sharpen the interpretation of the reachability ceiling in two ways.
 
-For Beauty, the TIGER-style SID baseline over three seeds obtains R@10 $0.0457 \pm 0.0022$, R@90 $0.1368 \pm 0.0135$, and reachable rate $0.1415 \pm 0.0147$. For Sports, the corresponding values are R@10 $0.0245 \pm 0.0022$, R@90 $0.0993 \pm 0.0090$, and reachable rate $0.1053 \pm 0.0088$. These results reduce the risk that the SID comparison is driven by a single weak random seed; the SID runs are consistently in the same performance range across seeds.
-
-The Sports multimodal experiment further supports the continuous-interface argument. We build a fused image--collaborative item space using ImageNet-pretrained ResNet-18 features and SASRec item embeddings, then compare CQG-Rec and TIGER-style SID retrieval on the same frozen item space. CQG-Rec obtains R@10 = 0.0326 and R@90 = 0.1154, while the multimodal SID run obtains R@10 = 0.0254 and R@90 = 0.0972. This controlled comparison suggests that CQG-Rec's advantage is not limited to purely collaborative embeddings; it also appears when the item space includes visual information.
-
+For Beauty, the TIGER-style SID baseline over 3 seeds obtains R@10 0.0457 $\pm$ 0.0022, R@90 0.1368 $\pm$ 0.0134, and reachable rate 0.1415 $\pm$ 0.0148. The multi-seed runs reduce the risk that the SID comparison is an artifact of a single weak seed.
+For Sports, the TIGER-style SID baseline over 3 seeds obtains R@10 0.0245 $\pm$ 0.0022, R@90 0.0993 $\pm$ 0.0089, and reachable rate 0.1053 $\pm$ 0.0088. The multi-seed runs reduce the risk that the SID comparison is an artifact of a single weak seed.
 The ML-1M beam-width sweep is still pending. Until it completes, we keep the beam-width claim conservative: the current evidence supports a support bottleneck under beam width 100, while the sweep will quantify how much wider beams relax that bottleneck and at what inference cost.
+
+In the Sports multimodal setting, both CQG-Rec and the SID decoder use the same fused image--collaborative item space. The CQG run obtains R@10 0.0326, while the multimodal SID run obtains R@10 0.0254. The fused embedding was built with torchvision_resnet18_imagenet. This isolates the retrieval-interface difference from the item-representation difference.
 % Missing core auto-sync inputs: ml1m_beam_sweep_s43
 % END AUTO_CORE_SUMMARY
 
@@ -446,6 +446,7 @@ beauty & 42 & 0.0454 & 0.0265 & 0.0840 & 0.1356 & 14.00\% \\
 beauty & 43 & 0.0436 & 0.0250 & 0.0742 & 0.1240 & 12.76\% \\
 beauty & 44 & 0.0480 & 0.0278 & 0.0902 & 0.1508 & 15.70\% \\
 electronics & 42 & 0.0324 & 0.0161 & 0.0644 & 0.1252 & 13.10\% \\
+electronics & 43 & 0.0276 & 0.0126 & 0.0572 & 0.1218 & 12.76\% \\
 lastfm & 42 & 0.0111 & 0.0052 & 0.0395 & 0.0821 & 8.21\% \\
 sports & 42 & 0.0220 & 0.0110 & 0.0436 & 0.0896 & 9.56\% \\
 sports & 43 & 0.0250 & 0.0127 & 0.0508 & 0.1012 & 10.76\% \\
@@ -465,7 +466,7 @@ The multimodal Sports embedding build completed with image encoder `torchvision_
 \toprule
 Run & R@10 & N@10 & R@90 & Reach. \\
 \midrule
-sports-mm-cqg-ce-s42 & -- & -- & -- & -- \\
+sports-mm-cqg-ce-s42 & 0.0326 & 0.0174 & 0.1154 & -- \\
 sports-mm-tiger-s42 & 0.0254 & 0.0137 & 0.0972 & 10.06\% \\
 \bottomrule
 \end{tabular}
