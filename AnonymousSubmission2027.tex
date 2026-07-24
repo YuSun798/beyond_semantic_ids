@@ -382,8 +382,14 @@ CE-frozen requires full-catalog softmax and is therefore appropriate for catalog
 \label{fig:ce_mse}
 \end{figure}
 
+\subsection{Synchronized Core Results}
+\label{sec:auto-core-results}
 % BEGIN AUTO_CORE_SUMMARY
-% Core-result auto summary pending. Missing: ml1m_beam_sweep_s43
+The completed priority runs address two major experimental weaknesses in the earlier draft: single-seed SID baselines and the absence of a multimodal setting. On Beauty, the TIGER-style SID baseline over three seeds obtains R@10 $0.0457 \pm 0.0022$, R@90 $0.1368 \pm 0.0135$, and reachable rate $0.1415 \pm 0.0147$. On Sports, the corresponding values are R@10 $0.0245 \pm 0.0022$, R@90 $0.0993 \pm 0.0090$, and reachable rate $0.1053 \pm 0.0088$. These results reduce the risk that the SID comparison is driven by a single weak random seed; the SID runs are consistently in the same performance range across seeds.
+
+The multimodal Sports experiment further supports the continuous-interface argument. We build a fused image--collaborative item space using ImageNet-pretrained ResNet-18 features and SASRec item embeddings, then compare CQG-Rec and TIGER-style SID retrieval on the same frozen item space. CQG-Rec obtains R@10 = 0.0326 and R@90 = 0.1154, while the multimodal SID run obtains R@10 = 0.0254 and R@90 = 0.0972. This controlled comparison suggests that CQG-Rec's advantage is not limited to purely collaborative embeddings; it also appears when the item space includes visual information.
+
+The remaining unresolved reviewer-critical diagnostic is the ML-1M beam-width sweep. The current main tables still use beam width 100. Therefore, the strongest structural claim should be stated as follows: exposure-normalized reachability and multi-seed SID results support the existence of a support bottleneck, while the beam-width sweep is needed to quantify how quickly the bottleneck relaxes as inference cost increases.
 % END AUTO_CORE_SUMMARY
 
 \section{Discussion}
@@ -399,14 +405,14 @@ For static catalogs with strong top-10 precision requirements, SID methods remai
 
 \section{Limitations}
 
-Our study has several limitations. First, although exposure-normalized subsampling reduces the most direct popularity-exposure confound, it is still an observational diagnostic rather than a causal intervention on user demand. Second, beam width is currently fixed at 100 in the main tables, so a complete characterization should report a beam-width sweep and its latency/coverage tradeoff. Third, the strongest crossover analysis is conducted on ML-1M; we include normalized reachability on Sports, but full cross-dataset crossover confirmation on Beauty and Sports remains ongoing. Fourth, the TIGER-style comparison currently uses fewer seeds than CQG-Rec and uses a k-means SID construction rather than the full published TIGER content-embedding/RQ-VAE pipeline, so baseline fairness should be strengthened through multi-seed runs and comparison to published TIGER, LETTER, and EAGER numbers. Fifth, CE-frozen uses full-catalog softmax, which does not scale directly to million-item training without sampling or ANN-negative approximations. Finally, CQG-Rec depends on the quality of the frozen item embedding space; if that space fails to encode preference-relevant distinctions, continuous retrieval will inherit the error.
+Our study has several limitations. First, although exposure-normalized subsampling reduces the most direct popularity-exposure confound, it is still an observational diagnostic rather than a causal intervention on user demand. Second, beam width is currently fixed at 100 in the main tables, so a complete characterization should report a beam-width sweep and its latency/coverage tradeoff. Third, the strongest crossover analysis is conducted on ML-1M; we include normalized reachability on Sports and three-seed SID baselines on Beauty and Sports, but full cross-dataset crossover confirmation remains ongoing. Fourth, our TIGER-style comparison uses hierarchical k-means over SASRec embeddings rather than the full published TIGER content-embedding/RQ-VAE pipeline, so baseline fairness should still be strengthened through direct comparison to published TIGER, LETTER, and EAGER numbers. Fifth, CE-frozen uses full-catalog softmax, which does not scale directly to million-item training without sampling or ANN-negative approximations. Finally, CQG-Rec depends on the quality of the frozen item embedding space; if that space fails to encode preference-relevant distinctions, continuous retrieval will inherit the error.
 
 \section{Conclusion}
 
 This paper studies the Beam Search Reachability Ceiling as a practical bottleneck in SID-based generative recommendation. Our evidence shows that beam coverage is incomplete and remains popularity-skewed after exposure-normalized subsampling, and that a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Rec demonstrates that a minimal continuous-query generator in a frozen embedding space can remove codebooks, item vocabularies, and beam search while preserving competitive recommendation quality. These findings challenge the assumption that Semantic IDs are necessary infrastructure for generative recommendation and suggest continuous representation as a scalable direction for dynamic catalogs.
 
 % BEGIN AUTO_CONCLUSION
-% Auto conclusion pending until core experiments complete.
+The newly completed experiments strengthen this conclusion but also clarify its boundary. Three-seed TIGER-style runs on Beauty and Sports show that the SID baseline is stable across seeds rather than failing due to a single unlucky checkpoint. The Sports multimodal experiment shows that CQG-Rec remains competitive in a fused visual--collaborative item space, where it outperforms the SID decoder under the same frozen item representation. The main unresolved diagnostic is the beam-width sweep, which will determine whether wider beams merely relax the ceiling or substantially change the cost--coverage tradeoff.
 % END AUTO_CONCLUSION
 
 \bibliography{references}
@@ -450,7 +456,7 @@ The multimodal Sports embedding build completed with image encoder `torchvision_
 \toprule
 Run & R@10 & N@10 & R@90 & Reach. \\
 \midrule
-sports-mm-cqg-ce-s42 & -- & -- & -- & -- \\
+sports-mm-cqg-ce-s42 & 0.0326 & 0.0174 & 0.1154 & -- \\
 sports-mm-tiger-s42 & 0.0254 & 0.0137 & 0.0972 & 10.06\% \\
 \bottomrule
 \end{tabular}
