@@ -286,7 +286,7 @@ Aggregate & 6,040 & \textbf{0.3036} & 0.2992 & -- & -- & -- & -- \\
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{Figures/fig2_crossover.pdf}
-\caption{Per-quartile Recall@K crossover curves. TIGER wins some rare-item shallow retrieval regimes through autoregressive precision, but plateaus at its reachability ceiling; CQG-Single continues improving at deeper K because all items remain scoreable.}
+\caption{Per-quartile Recall@K crossover curves. TIGER wins some rare-item shallow retrieval regimes through autoregressive precision, but plateaus at its reachability ceiling; CQG-Single continues improving at deeper K because all items remain scoreable. The bold black ring and annotation emphasize the Q1 tie at R@90.}
 \label{fig:crossover}
 \end{figure*}
 
@@ -479,7 +479,7 @@ We also tested whether a pretrained LLM backbone improves continuous query gener
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{Figures/fig4_llm_diagnostic.pdf}
+\includegraphics[width=0.8\columnwidth]{Figures/fig4_llm_diagnostic.pdf}
 \caption{LLM backbone diagnostics. Pretrained language backbones do not automatically align with the frozen collaborative item space; the best text-aware Qwen hybrid still trails the scratch query Transformer.}
 \label{fig:llm_diagnostic}
 \end{figure}
