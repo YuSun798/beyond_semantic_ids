@@ -34,6 +34,13 @@ Generative recommendation (GR) has recently emerged as a powerful paradigm, retr
 
 \section{Introduction}
 
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.8\textwidth]{Figures/fig1_1_pipeline.pdf}
+\caption{SID pipeline versus CQG-Rec pipeline. SID systems first tokenize items with a discrete tokenizer such as RQ-VAE or hierarchical k-means, then use autoregressive decoding and beam search before mapping generated codes back to items. CQG-Rec generates a continuous query and retrieves directly in a frozen item embedding space, making all encoded items scoreable by dense retrieval or ANN.}
+\label{fig:pipeline}
+\end{figure*}
+
 Generative recommendation retrieves items by generating symbolic identifiers rather than directly scoring the entire catalog. The most influential instance of this paradigm is Semantic-ID (SID) recommendation: items are first quantized into discrete code sequences, and an autoregressive model decodes those sequences conditioned on user history \citep{rajput2023tiger,zheng2024letter,wang2024eager}. This formulation is attractive because it converts recommendation into a familiar sequence-generation problem. It also supports constrained decoding through a trie, ensuring that the generated token sequence corresponds to a valid item.
 
 This marks a substantial architectural shift from conventional sequential recommenders. Models such as SASRec encode user histories, user features, and item representations, then score candidate items discriminatively \citep{kang2018sasrec}. In SID-based generative recommendation, the output interface is instead moved into a language-model-style generator: a decoder is trained to emit the SID sequence of the next item. Larger pretrained language models can provide useful generic knowledge and may benefit from scaling behavior as model and data size increase \citep{kaplan2020scaling}, but SID-based GR still requires three additional system components. First, items must be compressed into a finite hierarchical identifier space, using vector-quantization methods such as VQ-VAE \citep{vandenoord2017vqvae}, residual quantization as in RQ-VAE \citep{lee2022rqvae}, residual or balanced hierarchical clustering, or industrial generative retrieval designs such as OneRec \citep{deng2025onerec}. Second, the generator must be trained either by adapting a pretrained LLM through continued pretraining and supervised fine-tuning, where SID tokens become a new vocabulary that must be aligned with the LLM's semantic space, or by training a smaller decoder-only model from scratch, which sacrifices pretrained knowledge for a cleaner SID prediction objective. Third, inference decodes SID sequences from user features and sequential history, then maps the generated codes to item IDs or expands them through item-to-item retrieval. (Figure~\ref{fig:pipeline})
@@ -58,6 +65,8 @@ Our contributions are:
 
 \section{Related Work}
 
+
+
 \textbf{Semantic-ID generative recommendation.}
 TIGER \citep{rajput2023tiger} introduced hierarchical Semantic IDs using residual vector quantization and autoregressive decoding. Subsequent work improves code learning, alignment, and model design: LETTER integrates collaborative semantics \citep{zheng2024letter}, EAGER introduces behavior-semantic collaboration \citep{wang2024eager}, IDGenRec studies textual IDs \citep{tan2024idgenrec}, DIGER proposes differentiable indexing \citep{fu2026diger}, and UniGRec explores soft identifiers \citep{li2026unigrec}. These methods differ in how identifiers are constructed and aligned, but they retain a discrete vocabulary interface and typically require constrained autoregressive decoding. Our work targets a shared property of this family: the reachability ceiling induced by beam search over a structured identifier space.
 
@@ -72,6 +81,8 @@ Continuous alternatives avoid discrete item vocabularies. DiffuRec \citep{li2023
 
 \textbf{Sequential and dual-encoder recommendation.}
 Sequential recommendation models such as GRU4Rec \citep{hidasi2016gru4rec}, SASRec \citep{kang2018sasrec}, and BERT4Rec \citep{sun2019bert4rec} score candidate items from user histories. Dual-encoder retrieval originates from neural information retrieval \citep{huang2013dssm} and is widely deployed in large-scale recommendation \citep{covington2016youtube}. CQG-Rec inherits the dense retrieval interface but differs from standard two-tower systems in its experimental role: it is used as a controlled probe for the vocabulary and beam-search assumptions in generative recommendation.
+
+
 
 \section{Method}
 
@@ -88,6 +99,7 @@ The recommendation score is cosine similarity:
 \operatorname{score}(u,i)=q_u^\top e_i .
 \end{equation}
 The top-K items are retrieved by exact dense scoring or ANN search. Every item in $E$ is reachable by construction.
+
 
 \subsection{Continuous Query Generator}
 
@@ -140,13 +152,6 @@ Standalone CQG-Rec retrieves by ranking items according to $q_u^\top e_i$. For l
 \subsection{Contrast with SID Retrieval}
 
 Figure~\ref{fig:pipeline} compares the two inference mechanisms. SID retrieval requires codebook learning, autoregressive decoding, beam search, and code-to-item lookup. Beam search creates a nonzero-probability set that is smaller than the catalog. CQG-Rec requires only a query generator and a dense index; every encoded item can be retrieved without adding new output tokens or retraining the model.
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=0.9\textwidth]{Figures/fig1_1_pipeline.pdf}
-\caption{SID pipeline versus CQG-Rec pipeline. SID systems first tokenize items with a discrete tokenizer such as RQ-VAE or hierarchical k-means, then use autoregressive decoding and beam search before mapping generated codes back to items. CQG-Rec generates a continuous query and retrieves directly in a frozen item embedding space, making all encoded items scoreable by dense retrieval or ANN.}
-\label{fig:pipeline}
-\end{figure*}
 
 \section{Experiments}
 
@@ -419,8 +424,8 @@ This paper studies the Beam Search Reachability Ceiling as a practical bottlenec
 
 \section{Completed Additional Experiments}
 \label{app:auto-completed}
-% BEGIN AUTO_RESULTS
-This appendix section is automatically updated from completed AutoDL runs. Rows are added only after a result JSON is present on disk; running jobs are not reported as final results.
+
+Rows are added only after a result JSON is present on disk; running jobs are not reported as final results.
 
 \begin{table}[!htbp]
 \centering
@@ -465,7 +470,9 @@ Beam Width & R@10 & R@90 & Reach. \\
 \end{table}
 
 \paragraph{Sports multimodal runs.}
-The multimodal Sports embedding build completed with image encoder `torchvision_resnet18_imagenet`. If this field indicates an untrained fallback, the result should be treated as diagnostic rather than a final multimodal claim.
+The multimodal Sports embedding build completed with image encoder 'torchvision_resnet18_imagenet'. 
+If this field indicates an untrained fallback, the result should be treated as diagnostic rather than a final multimodal claim.
+
 \begin{table}[!htbp]
 \centering
 \small
