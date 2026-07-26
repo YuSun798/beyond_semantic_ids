@@ -278,7 +278,7 @@ Q4 popular & 3,945 & \textbf{0.3546} & 0.3473 & \textbf{0.6347} & 0.6269 & \text
 Aggregate & 6,040 & \textbf{0.3036} & 0.2992 & -- & -- & -- & -- \\
 \bottomrule
 \end{tabular}
-\caption{Per-quartile crossover on ML-1M. SID decoding is competitive at shallow K, especially on rare items, but CQG-Single matches or exceeds TIGER at deeper K as the beam-search ceiling binds.}
+\caption{Paired seed-42 per-quartile diagnostic on ML-1M from the earlier crossover checkpoint. The aggregate values are checkpoint-specific, not the three-seed estimates in Table~\ref{tab:ml1m}; we retain this table only because both methods were evaluated on exactly the same users and saved per-user outputs.}
 \label{tab:crossover}
 \end{table*}
 
@@ -300,15 +300,13 @@ Table~\ref{tab:ml1m} compares the two continuous methods and SID baselines on ML
 \toprule
 Method & Params & R@10 & NDCG@10 \\
 \midrule
-SASRec full-rank & -- & 0.2781 & 0.1530 \\
+SASRec full-rank & -- & 0.2797 & 0.1535 \\
 TIGER-style SID & 5.78M & $0.2957{\pm}0.0103$ & $0.1717{\pm}0.0064$ \\
 CQG-Single CE & 3.2M & $\mathbf{0.3114{\pm}0.0069}$ & $\mathbf{0.1814{\pm}0.0070}$ \\
 CQG-AR ($L=3$) & 5.62M & $0.2946{\pm}0.0029$ & $0.1704{\pm}0.0035$ \\
-CQG-Single BPR & 3.2M & 0.2596 & 0.1360 \\
-CQG-Single MSE & 3.2M & 0.2482 & 0.1424 \\
 \bottomrule
 \end{tabular}
-\caption{ML-1M overall comparison. TIGER-style, CQG-Single CE, and CQG-AR report mean and sample standard deviation across seeds 42--44 under the same 6,040-user leave-one-out evaluator. CQG-Single BPR and MSE are retained as objective ablations.}
+\caption{ML-1M overall comparison. TIGER-style, CQG-Single CE, and CQG-AR report mean and sample standard deviation across seeds 42--44 under the same 6,040-user leave-one-out evaluator. Objective ablations are isolated in Table~\ref{tab:loss}.}
 \label{tab:ml1m}
 \end{table}
 
@@ -383,7 +381,7 @@ Continuous, autoregressive & CQG-AR
 
 \subsection{Cross-Dataset Pipeline Results}
 
-We further evaluate CQG-Single as a candidate generator followed by SASRec reranking. Table~\ref{tab:cross} shows that the pipeline achieves 97.7--102\% of SASRec Recall@10 across ML-1M, Beauty, and Sports. This result is important for system design: even when standalone dense retrieval is below full-rank SASRec, CQG-Single can provide a candidate set that allows a standard reranker to recover nearly all ranking quality. The corresponding CQG-AR pipeline uses the same reranking interface; its standalone three-dataset results appear in Table~\ref{tab:three-dataset-direct}.
+We further evaluate a legacy MSE-trained CQG-Single checkpoint as a candidate generator followed by SASRec reranking. Table~\ref{tab:cross} shows that this pipeline achieves 97.7--102\% of SASRec Recall@10 across ML-1M, Beauty, and Sports. These values are a candidate-generation diagnostic and are not the CE-trained standalone results in Tables~\ref{tab:ml1m} and~\ref{tab:three-dataset-direct}. The corresponding CQG-AR pipeline uses the same reranking interface; its standalone three-dataset results appear in Table~\ref{tab:three-dataset-direct}.
 
 \begin{table}[t]
 \centering
@@ -394,16 +392,16 @@ Method & ML-1M & Beauty & Sports \\
 \midrule
 \multicolumn{4}{l}{\textit{Recall@10}} \\
 SASRec & 0.2797 & 0.0558 & 0.0390 \\
-CQG-Single standalone & 0.2425 & 0.0524 & 0.0307 \\
-CQG-Single pipeline & \textbf{0.2801} & \textbf{0.0569} & 0.0381 \\
+CQG-Single MSE standalone & 0.2425 & 0.0524 & 0.0307 \\
+CQG-Single MSE + reranker & \textbf{0.2801} & \textbf{0.0569} & 0.0381 \\
 \midrule
 \multicolumn{4}{l}{\textit{NDCG@10}} \\
 SASRec & 0.1535 & 0.0296 & 0.0197 \\
-CQG-Single standalone & 0.1424 & 0.0266 & 0.0150 \\
-CQG-Single pipeline & \textbf{0.1554} & \textbf{0.0308} & 0.0194 \\
+CQG-Single MSE standalone & 0.1424 & 0.0266 & 0.0150 \\
+CQG-Single MSE + reranker & \textbf{0.1554} & \textbf{0.0308} & 0.0194 \\
 \bottomrule
 \end{tabular}
-\caption{Cross-dataset results. The CQG-Single pipeline retrieves 100 candidates and reranks them with SASRec.}
+\caption{Legacy MSE CQG-Single candidate-generation diagnostic. The pipeline retrieves 100 candidates and reranks them with SASRec; these rows must not be compared as if they were the CE checkpoint.}
 \label{tab:cross}
 \end{table}
 
@@ -421,7 +419,7 @@ Retriever & ML-1M R@10 & Sports R@10 \\
 Random & 0.0252 & 0.0037 \\
 Last-item kNN & 0.2349 & 0.0311 \\
 Mean-of-5 kNN & 0.2545 & 0.0310 \\
-CQG-Single & \textbf{0.2801} & \textbf{0.0381} \\
+CQG-Single MSE + SASRec & \textbf{0.2801} & \textbf{0.0381} \\
 SASRec full-rank & 0.2797 & 0.0390 \\
 \bottomrule
 \end{tabular}
