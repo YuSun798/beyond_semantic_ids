@@ -251,7 +251,7 @@ Sports & Q4 popular & 15.46\% & 2.31\% \\
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{Figures/fig3_reachability.pdf}
+\includegraphics[width=0.9\columnwidth]{Figures/fig3_reachability.pdf}
 \caption{Target-conditioned beam support is skewed across popularity quartiles. The same qualitative skew remains under the matched-target analysis in Table~\ref{tab:exposure-normalized}.}
 \label{fig:reachability}
 \end{figure}
@@ -320,7 +320,7 @@ Table~\ref{tab:ml1m} compares the two continuous methods and SID baselines on ML
 \begin{table}[t]
 \centering
 \scriptsize
-\setlength{\tabcolsep}{2.6pt}
+\setlength{\tabcolsep}{8pt}
 \begin{tabular}{lrrr}
 \toprule
 Method & Params & R@10 & NDCG@10 \\
@@ -341,7 +341,7 @@ Table~\ref{tab:ar-depth} varies CQG-AR depth while holding the seed, architectur
 \begin{table}[t]
 \centering
 \scriptsize
-\setlength{\tabcolsep}{3.2pt}
+\setlength{\tabcolsep}{8pt}
 \begin{tabular}{lrrr}
 \toprule
 Depth & R@10 & NDCG@10 & R@100 \\
@@ -506,7 +506,7 @@ We also tested whether a pretrained LLM backbone improves continuous query gener
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=0.8\columnwidth]{Figures/fig4_llm_diagnostic.pdf}
+\includegraphics[width=0.9\columnwidth]{Figures/fig4_llm_diagnostic.pdf}
 \caption{LLM backbone diagnostics. Pretrained language backbones do not automatically align with the frozen collaborative item space; the best text-aware Qwen hybrid still trails the scratch query Transformer.}
 \label{fig:llm_diagnostic}
 \end{figure}
