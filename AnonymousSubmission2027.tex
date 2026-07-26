@@ -163,13 +163,15 @@ We also test direct embedding regression:
 \end{equation}
 MSE preserves geometric alignment but yields lower retrieval precision than CE in our experiments.
 
-\subsection{Retrieval and Reranking}
+\subsection{Retrieval, Reranking, and Contrast with SID}
 
-Standalone CQG-Single ranks items according to $q_u^\top e_i$, while CQG-AR uses $(\hat e_u^{(L)})^\top e_i$. For larger catalogs, exact scoring can be replaced with an ANN index such as FAISS \citep{johnson2021faiss}. CQG-AR can also expose multiple intermediate or interest-specific queries, execute ANN for each, and merge their candidates under a fixed total candidate budget. We evaluate a modular retrieve-and-rank pipeline in which the continuous generator retrieves 100 candidates and a pretrained SASRec model reranks only those candidates.
+Standalone CQG-Single ranks items according to $q_u^\top e_i$, while CQG-AR uses $(\hat e_u^{(L)})^\top e_i$. Exact catalog scoring can be replaced by ANN search, such as FAISS, for large catalogs. CQG-AR may also retrieve candidates from multiple intermediate or interest-specific queries and merge them under a fixed candidate budget. In our retrieve-and-rerank evaluation, the continuous generator retrieves 100 candidates, which are then reranked by a pretrained SASRec model. In contrast, SID retrieval requires codebook learning, autoregressive discrete decoding, beam search, and code-to-item lookup; a finite beam explores only a restricted subset of valid code paths. (Figure~\ref{fig:pipeline}) CQG-Single instead generates one continuous query, while CQG-AR preserves step-wise autoregressive generation with continuous outputs. Both directly query the item embedding index without introducing an item-token vocabulary.
+% For larger catalogs, exact scoring can be replaced with an ANN index such as FAISS \citep{johnson2021faiss}. CQG-AR can also expose multiple intermediate or interest-specific queries, execute ANN for each, and merge their candidates under a fixed total candidate budget. We evaluate a modular retrieve-and-rank pipeline in which the continuous generator retrieves 100 candidates and a pretrained SASRec model reranks only those candidates.
 
-\subsection{Contrast with SID Retrieval}
+% \subsection{Contrast with SID Retrieval}
 
-Figure~\ref{fig:pipeline} compares the inference mechanisms. SID retrieval requires codebook learning, autoregressive discrete decoding, beam search, and code-to-item lookup. Under a finite beam budget, only a restricted subset of valid code paths is explored. CQG-Single uses single-step continuous generation, whereas CQG-AR retains autoregressive decoding with continuous outputs. Both continuous variants query a dense index without introducing an item-token vocabulary.
+% Figure~\ref{fig:pipeline} compares the inference mechanisms. SID retrieval requires codebook learning, autoregressive discrete decoding, beam search, and code-to-item lookup. Under a finite beam budget, only a restricted subset of valid code paths is explored. CQG-Single uses single-step continuous generation, whereas CQG-AR retains autoregressive decoding with continuous outputs. Both continuous variants query a dense index without introducing an item-token vocabulary.
+
 \section{Experiments}
 
 \subsection{Experimental Setup}
