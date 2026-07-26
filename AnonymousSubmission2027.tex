@@ -378,32 +378,6 @@ $L=4$ & \textbf{0.2944} & 0.1717 & \textbf{0.6697} \\
 \label{tab:ar-depth}
 \end{table}
 
-\subsection{Closer SID Output Diagnostic}
-
-In addition to our hierarchical-$k$-means diagnostic baseline, we run a closer Beauty SID recipe using the available precomputed T5/RQ-VAE codes and a T5 encoder--decoder. This run does not match the reference implementation's reported ranking accuracy, so we do not use published SID numbers as main-text benchmarks. Appendix~\ref{app:tiger_recipe} gives the exact recipe, the implementation-gap comparison, and plausible sources of the discrepancy.
-
-\paragraph{Output-set coverage.}
-We also decode the full 22,363-user Beauty test set from each T5/RQ-VAE checkpoint with beam width 100 and map valid generated codes back to catalog items. Across seeds, 99.48\% of generated sequences are valid SIDs, but the union covers only $44.0\%\pm13.7\%$ of the 12,101-item catalog. The popularity gradient is consistent despite substantial seed variance: mean coverage rises from $14.0\%\pm7.6\%$ in Q1 to $88.7\%\pm13.0\%$ in Q4 (Table~\ref{tab:faithful-coverage}). Because this reproduction has an unresolved ranking-accuracy gap (Appendix~\ref{app:tiger_recipe}), it shows only that the coverage pattern is not unique to our hierarchical-$k$-means code assignment; it is not a substitute for measuring the reference implementation's checkpoint.
-
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{lrr}
-\toprule
-Catalog group & Coverage@100 & Std. \\
-\midrule
-Q1 rare & 14.0\% & 7.6\% \\
-Q2 & 26.1\% & 13.8\% \\
-Q3 & 47.4\% & 20.3\% \\
-Q4 popular & 88.7\% & 13.0\% \\
-\midrule
-Overall & 44.0\% & 13.7\% \\
-\bottomrule
-\end{tabular}
-\caption{Empirical union-of-top-100 catalog coverage for the closer T5/RQ-VAE Beauty reproduction, averaged over decoder seeds 42--44. Each quartile contains approximately one quarter of the catalog.}
-\label{tab:faithful-coverage}
-\end{table}
-
 \subsection{Cross-Dataset Continuous--Discrete Comparison}
 
 Table~\ref{tab:three-dataset-direct} places TIGER-style, CQG-Single, and CQG-AR side by side on all three datasets. ML-1M uses the same 6,040 users and Beauty now uses the same 22,363 users for every reported method and seed. Sports full-user TIGER evaluation is still pending, so its aggregate remains an unpaired diagnostic and is not used for significance claims.
@@ -864,6 +838,45 @@ python main.py --dataset\_path ../data/Beauty\\
 --num\_epochs 200 --batch\_size 256 --infer\_size 96\\
 --lr 1e-4 --beam\_size 30 --seed \{42,43,44\}.
 \end{quote}
+
+In addition to our hierarchical-$k$-means diagnostic baseline, this closer
+Beauty SID recipe uses the available precomputed T5/RQ-VAE codes and a T5
+encoder--decoder. It does not match the reference implementation's reported
+ranking accuracy, so we do not use published SID numbers as main-text
+benchmarks.
+
+\paragraph{Output-set coverage.}
+We also decode the full 22,363-user Beauty test set from each T5/RQ-VAE
+checkpoint with beam width 100 and map valid generated codes back to catalog
+items. Across seeds, 99.48\% of generated sequences are valid SIDs, but the
+union covers only $44.0\%\pm13.7\%$ of the 12,101-item catalog. The popularity
+gradient is consistent despite substantial seed variance: mean coverage rises
+from $14.0\%\pm7.6\%$ in Q1 to $88.7\%\pm13.0\%$ in Q4
+(Table~\ref{tab:faithful-coverage}). Because this reproduction has an
+unresolved ranking-accuracy gap, it shows only that the coverage pattern is
+not unique to our hierarchical-$k$-means code assignment; it is not a
+substitute for measuring the reference implementation's checkpoint.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Catalog group & Coverage@100 & Std. \\
+\midrule
+Q1 rare & 14.0\% & 7.6\% \\
+Q2 & 26.1\% & 13.8\% \\
+Q3 & 47.4\% & 20.3\% \\
+Q4 popular & 88.7\% & 13.0\% \\
+\midrule
+Overall & 44.0\% & 13.7\% \\
+\bottomrule
+\end{tabular}
+\caption{Empirical union-of-top-100 catalog coverage for the closer T5/RQ-VAE
+Beauty reproduction, averaged over decoder seeds 42--44. Each quartile
+contains approximately one quarter of the catalog.}
+\label{tab:faithful-coverage}
+\end{table}
 
 This recipe yields Beauty R@10 $0.0408\pm0.0016$, whereas the reference
 implementation reports a higher value (Table~\ref{tab:published-sid}). We do
