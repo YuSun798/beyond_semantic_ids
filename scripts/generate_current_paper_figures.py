@@ -1,8 +1,8 @@
 """Regenerate the current paper Figures 2--4 as vector PDFs.
 
-These figures use the checkpoint-specific values currently reported in the
-paper. Figure 3 will be regenerated again after the queued beam-200/Top-200
-dense-depth evaluation completes.
+These figures use protocol-matched, checkpoint-specific values reported in the
+paper. The crossover curves use the saved seed-42 CQG-Single Top-200 output and
+TIGER beam-200 output; every plotted depth is measured rather than interpolated.
 """
 
 from pathlib import Path
@@ -75,61 +75,34 @@ def figure2():
 
 
 def figure3():
-    ks = np.array([10, 50, 90])
+    ks = np.array([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120, 150])
     panels = [
-        ("Q1 (rare, 192 users)", [0.0521, 0.1615, 0.2396], [0.0677, 0.1875, 0.2396], 0.240),
-        ("Q2 (582 users)", [0.1615, 0.4107, 0.5017], [0.1753, 0.3900, 0.4691], 0.471),
-        ("Q3 (1,321 users)", [0.2506, 0.5026, 0.5927], [0.2438, 0.4807, 0.5579], 0.561),
-        ("Q4 (popular, 3,945 users)", [0.3546, 0.6347, 0.7234], [0.3473, 0.6269, 0.7049], 0.708),
+        ("Q1 (rare, 193 users)",
+         [0.062176, 0.119171, 0.145078, 0.165803, 0.186528, 0.191710, 0.212435, 0.243523, 0.284974, 0.295337, 0.316062, 0.357513],
+         [0.067358, 0.103627, 0.134715, 0.165803, 0.191710, 0.202073, 0.222798, 0.259067, 0.264249, 0.279793, 0.305699, 0.316062]),
+        ("Q2 (581 users)",
+         [0.177281, 0.271945, 0.323580, 0.361446, 0.395869, 0.432014, 0.450947, 0.480207, 0.492255, 0.511188, 0.550775, 0.583477],
+         [0.175559, 0.254733, 0.313253, 0.352840, 0.387263, 0.423408, 0.442341, 0.464716, 0.485370, 0.497418, 0.521515, 0.547332]),
+        ("Q3 (1,322 users)",
+         [0.251891, 0.344932, 0.420575, 0.467474, 0.503026, 0.531014, 0.562784, 0.584720, 0.600605, 0.618759, 0.642965, 0.673979],
+         [0.243570, 0.341150, 0.407716, 0.450832, 0.481089, 0.509077, 0.536309, 0.558245, 0.580182, 0.597579, 0.625567, 0.642965]),
+        ("Q4 (popular, 3,944 users)",
+         [0.355477, 0.475406, 0.547921, 0.597363, 0.633114, 0.662018, 0.686359, 0.703854, 0.718560, 0.733519, 0.757099, 0.784229],
+         [0.347363, 0.461207, 0.530680, 0.583418, 0.627028, 0.650862, 0.679513, 0.702079, 0.720335, 0.732759, 0.760396, 0.786004]),
     ]
     fig, axes = plt.subplots(2, 2, figsize=(11.5, 4.7), sharex=False)
     blue, gold = "#0072B2", "#E69F00"
-    for idx, (ax, (title, cqg, tiger, ceiling)) in enumerate(zip(axes.flat, panels)):
-        ax.plot(ks, cqg, "-o", color=blue, lw=2.3, ms=6, label="CQG-Single")
-        ax.plot(ks, tiger, "-s", color=gold, lw=2.3, ms=6, label="TIGER")
-        ax.axhline(ceiling, color="#E67E22", lw=1.2, ls=(0, (5, 4)), alpha=0.9)
-        ax.text(
-            11,
-            ceiling + 0.012,
-            f"Target support ({ceiling * 100:.1f}%)",
-            color="#D95F02",
-            fontsize=8,
-            fontstyle="italic",
-        )
+    for idx, (ax, (title, cqg, tiger)) in enumerate(zip(axes.flat, panels)):
+        ax.plot(ks, cqg, "-o", color=blue, lw=2.0, ms=3.8, label="CQG-Single")
+        ax.plot(ks, tiger, "-s", color=gold, lw=2.0, ms=3.8, label="TIGER")
         ax.set_title(title, fontsize=11)
-        ax.set_xticks(ks, [f"R@{k}" for k in ks])
+        ax.set_xticks([10, 50, 100, 150])
+        ax.set_xlabel("Cutoff $K$")
         ax.grid(axis="y", alpha=0.13)
         ax.spines[["top", "right"]].set_visible(False)
         if idx in (0, 2):
             ax.set_ylabel("Recall")
 
-    tie_ax = axes[0, 0]
-    tie_x, tie_y = 90, 0.2396
-    tie_ax.scatter(
-        [tie_x],
-        [tie_y],
-        s=180,
-        facecolors="none",
-        edgecolors="black",
-        linewidths=2.8,
-        zorder=8,
-    )
-    tie_ax.annotate(
-        "TIE: R@90 = 0.2396",
-        xy=(tie_x, tie_y),
-        xytext=(48, 0.108),
-        arrowprops=dict(arrowstyle="->", color="black", lw=1.8),
-        bbox=dict(boxstyle="round,pad=0.3", fc="white", ec="black", lw=1.8),
-        fontsize=9,
-        fontweight="bold",
-        color="black",
-        zorder=9,
-    )
-    axes[0, 0].text(24, 0.09, "TIGER +30%", color=gold, fontsize=9, fontweight="bold")
-    axes[0, 1].text(24, 0.205, "TIGER +9%", color=gold, fontsize=9, fontweight="bold")
-    axes[0, 1].text(80, 0.525, "CQG +7%", color=blue, fontsize=9, fontweight="bold")
-    axes[1, 0].text(80, 0.62, "CQG +6%", color=blue, fontsize=9, fontweight="bold")
-    axes[1, 1].text(80, 0.76, "CQG +3%", color=blue, fontsize=9, fontweight="bold")
     handles, labels = axes[0, 0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.02))
     fig.tight_layout(rect=(0, 0.06, 1, 1))
