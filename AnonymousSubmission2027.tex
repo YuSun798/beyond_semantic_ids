@@ -68,28 +68,53 @@ Our contributions are:
 
 \section{Related Work}
 
-
-
 \textbf{Semantic-ID generative recommendation.}
-TIGER \citep{rajput2023tiger} introduced hierarchical Semantic IDs using residual vector quantization and autoregressive decoding. Subsequent work improves code learning, alignment, and model design: LETTER integrates collaborative semantics \citep{zheng2024letter}, EAGER introduces behavior-semantic collaboration \citep{wang2024eager}, IDGenRec studies textual IDs \citep{tan2024idgenrec}, DIGER proposes differentiable indexing \citep{fu2026diger}, and UniGRec explores soft identifiers \citep{li2026unigrec}. These methods differ in how identifiers are constructed and aligned, but they retain a discrete vocabulary interface and typically require constrained autoregressive decoding. Our work targets a practical property of this family: finite-width search can allocate output support unevenly over a structured identifier space.
+TIGER \citep{rajput2023tiger} introduced hierarchical Semantic IDs using
+residual vector quantization and autoregressive decoding. Later work improves
+identifier learning and alignment through collaborative semantics, textual
+IDs, differentiable indexing, or soft identifiers
+\citep{zheng2024letter,wang2024eager,tan2024idgenrec,fu2026diger,li2026unigrec}.
+These methods differ in code construction but retain a structured output
+interface that typically uses constrained autoregressive decoding. We study
+how finite-width search allocates support over that interface, rather than
+proposing another discrete tokenizer. This distinction also separates
+successful code assignment from successful code retrieval at inference time.
 
-\textbf{Reachability and expressiveness limits.}
-Theoretical work has begun to formalize limitations of tree-structured generative retrieval. \citet{hou2026expressiveness} show that autoregressive tree generation imposes correlation constraints that limit representable item distributions. This analysis motivates our empirical question: how do support constraints appear in practical SID-style recommendation pipelines? We complement this line of work by measuring target-conditioned beam support, matched-budget output coverage, and retrieval-depth behavior under controlled comparisons.
-
-\textbf{Popularity bias in SID systems.}
-Recent work also studies training-side popularity bias. For example, tail tokens may receive fewer updates under maximum-likelihood training, motivating modified objectives or tokenization schemes. Our analysis is complementary: even when code assignment succeeds, a held-out target can be absent from a finite beam. In our ML-1M experiments, 99.4\% of items receive unique codes, yet only 63.8\% of test instances have their target in the width-100 beam. Under matched-target resampling, popular-quartile targets still show substantially higher support than rare-quartile targets. This separates code-assignment success from inference-side exploration without conflating a per-user hit rate with catalog coverage.
+\textbf{Finite search support and popularity.}
+Autoregressive tree generation can impose correlation constraints on
+representable item distributions \citep{hou2026expressiveness}, while
+training-side studies note that tail tokens receive fewer updates. We examine
+the complementary inference-side question: even with a valid, nearly unique
+code, does a target enter a finite beam? We measure target-conditioned beam
+support, matched-output catalog coverage, and popularity-stratified behavior,
+carefully separating these quantities. In particular, a high unique-code rate
+does not imply that every target enters a user's beam, and a target-conditioned
+hit rate does not equal catalog coverage. Our experiments treat these as
+distinct diagnostics of a trained model and its search budget.
 
 \textbf{Vocabulary-free and continuous recommendation.}
-Continuous alternatives avoid discrete item vocabularies. DiffuRec \citep{li2023diffurec}, DreamRec \citep{yang2023dreamrec}, and ContRec \citep{qu2026contrec} use diffusion or continuous latent generation. GPT4Rec \citep{li2023gpt4rec} generates textual queries for retrieval. CQG-Single occupies a deliberately minimal point in this design space, while CQG-AR preserves step-wise generation with continuous outputs. The contribution is not that continuous retrieval exists, but that these paired interfaces expose finite-beam output support and separate discrete output constraints from autoregressive modeling.
+DiffuRec, DreamRec, and ContRec use diffusion or continuous latent generation
+\citep{li2023diffurec,yang2023dreamrec,qu2026contrec}, while GPT4Rec generates
+textual retrieval queries \citep{li2023gpt4rec}. CQG-Single provides a minimal
+continuous-query control, and CQG-AR adds step-wise residual refinement. Their
+purpose is to separate autoregression from discrete SID output, not to claim
+dense retrieval itself as novel. This paired design asks whether step-wise
+generation requires discrete identifier tokens: CQG-Single removes both the
+token vocabulary and serial decoding, whereas CQG-AR preserves serial
+generation but replaces tokens with continuous residual updates.
 
-\textbf{Sequential and dual-encoder recommendation.}
-Sequential recommendation models such as GRU4Rec \citep{hidasi2016gru4rec}, SASRec \citep{kang2018sasrec}, and BERT4Rec \citep{sun2019bert4rec} score candidate items from user histories; P5 casts multiple recommendation tasks as language processing \citep{geng2022p5}. Dual-encoder retrieval originates from neural information retrieval \citep{huang2013dssm} and is widely deployed in large-scale recommendation \citep{covington2016youtube}. CQG-Single inherits the dense retrieval interface, whereas CQG-AR adds continuous autoregressive refinement. Their experimental role is to probe the vocabulary and beam-search assumptions in generative recommendation.
-
-\textbf{Generative and hybrid retrieval.}
-Generative retrieval in information retrieval directly decodes document identifiers, as in DSI and NCI \citep{tay2022dsi,wang2022nci}, and therefore shares questions about identifier design and constrained decoding with SID recommendation. LIGER explicitly combines dense and generative retrieval for sequential recommendation and studies their effectiveness and efficiency tradeoffs \citep{yang2024liger}. Our study is complementary: we compare finite-output support under matched budgets and use CQG-AR to separate autoregressive decoding from a discrete identifier vocabulary. These prior systems also make clear that dense retrieval is not itself our novelty claim.
-
-\textbf{Scope of novelty.}
-Dense retrieval and its catalog-wide scoring property are established techniques; we do not claim either as a new retrieval architecture. Our contribution is a controlled comparison in a shared frozen item space, together with item-level and popularity-stratified measurements of finite SID output support and its depth-dependent interaction with Recall@$K$. CQG-Single supplies a minimal dense control, whereas CQG-AR tests the same question with autoregressive continuous outputs. This design separates code assignment from code retrieval without attributing gains to a larger item encoder or a more elaborate ranker.
+\textbf{Sequential, dense, and hybrid retrieval.}
+GRU4Rec, SASRec, and BERT4Rec score catalog items from interaction histories
+\citep{hidasi2016gru4rec,kang2018sasrec,sun2019bert4rec}; dual encoders are
+established in retrieval and recommendation
+\citep{huang2013dssm,covington2016youtube}. Generative retrieval instead
+decodes identifiers \citep{tay2022dsi,wang2022nci}, and LIGER combines dense
+and generative retrieval \citep{yang2024liger}. These lines establish both
+catalog scoring and identifier decoding as known retrieval interfaces.
+Our contribution is therefore a controlled comparison in a shared frozen item
+space, using CQG-Single and CQG-AR to distinguish finite SID output support
+from autoregressive modeling without attributing the comparison to a larger
+item encoder or an additional reranker.
 \section{Method}
 
 \subsection{Problem Formulation}
