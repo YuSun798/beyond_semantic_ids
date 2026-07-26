@@ -200,7 +200,13 @@ We use leave-one-out evaluation: the last item is held out for testing, the seco
 We compare against SASRec \citep{kang2018sasrec}, TIGER-style SID retrieval \citep{rajput2023tiger}, and reported SID results from TIGER, LETTER, and EAGER where protocols permit contextual comparison. We also include non-learned dense retrieval baselines: random retrieval, last-item kNN, and mean-of-5 kNN.
 
 \textbf{Model training protocol.}
-We first train SASRec on the same chronological next-item task used by the baselines, freeze its item embeddings, and then train the query generator in that fixed space. The multimodal Sports experiment instead freezes a fusion of these embeddings and ImageNet-pretrained ResNet-18 features. Holding the item space fixed isolates the retrieval interface; full architecture and objective details appear in Section~\ref{app:training}.
+We first train a two-layer SASRec encoder with BPR on chronological next-item pairs, select the checkpoint by full-catalog validation NDCG@10, and export its 64-dimensional item lookup table as a frozen collaborative item space. The same table supplies history inputs, target vectors or classifier weights, and the retrieval index for both continuous methods; the main experiments use no text or language-model item encoder.
+
+\textbf{CQG-Single.}
+CQG-Single is a four-layer, four-head causal Transformer trained from scratch. It projects the frozen 64-dimensional history embeddings to width 256, produces one normalized 64-dimensional query, and learns from the next-item target using full-catalog CE, MSE, or in-batch InfoNCE. It has no pretrained backbone or trainable item tower.
+
+\textbf{CQG-AR.}
+CQG-AR is a four-layer, six-head causal Transformer trained from scratch at width 384. It autoregressively generates three 64-dimensional residuals, feeds each residual back as the next decoder input, and retrieves with the normalized cumulative query. All decoding steps correspond to the same next-item label rather than to different SID levels; in the final recipe only the last query receives direct CE supervision. The multimodal Sports diagnostic replaces the collaborative table with a frozen fusion of collaborative and ImageNet-pretrained ResNet-18 features. Complete sample construction, optimization, checkpoint selection, and embedding-export details appear in Section~\ref{app:training}.
 
 \section{Results}
 
@@ -642,27 +648,125 @@ We report the mean and standard deviation over 200 trials. This equalizes the nu
 \section{Model and Training Details}
 \label{app:training}
 
+\subsection{Frozen Collaborative Item Space}
+\label{app:item-encoder}
+
+\paragraph{SASRec backbone and examples.}
+The item space is learned by a SASRec encoder trained from scratch on the
+training portion of each dataset; no text, image, T5, or language-model
+features are used in the main item encoder.  The model contains a trainable
+item lookup table \(V\in\mathbb{R}^{N\times64}\), learned positional
+embeddings, and two causal self-attention blocks with two heads, hidden
+dimension 64, and dropout 0.2.  For a chronological training sequence
+\((i_1,\ldots,i_T)\), every position \(t=2,\ldots,T\) yields
+\[
+  ([i_{\max(1,t-L)},\ldots,i_{t-1}],\,i_t),
+\]
+where \(L=50\) on ML-1M and \(L=20\) on Beauty and Sports.  Histories are
+left-padded with item ID 0; the padding embedding is fixed at zero and is
+excluded from evaluation.
+
+\paragraph{BPR pretraining and checkpoint selection.}
+Let \(h_t\) be the final SASRec hidden state for a history, \(i_t\) its
+positive next item, and \(i^-\) one item drawn uniformly from IDs
+\(\{1,\ldots,N-1\}\).  SASRec is optimized with
+\[
+  \mathcal L_{\mathrm{BPR}}
+  =-\log\sigma(h_t^\top V_{i_t}-h_t^\top V_{i^-}).
+\]
+We use Adam with learning rate \(10^{-3}\) and batch size 256.  Every five
+epochs, validation ranks the held-out validation item against the full
+catalog (masking padding).  We retain the checkpoint with the highest
+validation NDCG@10.  The maximum is 200 epochs for ML-1M and Beauty and 400
+for Sports; checkpoint selection, rather than the last epoch, determines the
+exported representation.
+
+\paragraph{Export, normalization, and sharing.}
+After loading the selected checkpoint, we export the lookup parameters
+directly,
+\[
+  E=\texttt{SASRec.item\_emb.weight}\in\mathbb{R}^{N\times64}.
+\]
+Thus \(e_i\) is a global collaborative item parameter, not a contextual
+SASRec hidden state.  We freeze \(E\) for every downstream run.  Its
+non-padding rows are L2-normalized for cosine retrieval, CE, BPR, and
+InfoNCE; the legacy CQG-Single MSE objective regresses to the raw exported
+vector.  The same frozen table is used (i) to embed history IDs,
+(ii) as the MSE/InfoNCE target table or the full-catalog CE classifier,
+(iii) as the exact or ANN retrieval index, and (iv) as the input to the
+hierarchical clustering used by our TIGER-style baseline.  This sharing
+prevents differences in the item encoder from explaining differences among
+the output interfaces.  Dataset-specific seeds use their corresponding
+SASRec export where stated; the canonical ML-1M seed-42 table has shape
+\(3417\times64\).
+
+\subsection{CQG-Single Architecture and Optimization}
+\label{app:cqg-single-training}
+
+CQG-Single has no pretrained backbone and does not update \(E\).  Frozen
+64-dimensional history vectors are projected to width 256 and combined with
+learned positional embeddings.  Four pre-norm causal Transformer blocks,
+each with four attention heads, feed-forward dimension 1024, and dropout 0.1,
+produce the final valid history state.  A linear head maps this state back to
+64 dimensions and the query is L2-normalized before scoring the normalized
+catalog.  The CE configuration uses Adam, learning rate \(10^{-3}\), batch
+size 256, at most 50 epochs, validation every five epochs, and early stopping
+with patience 15 based on validation NDCG@10.  MSE and InfoNCE change only
+the objective and their stated learning-rate/epoch settings in
+Table~\ref{tab:hparams}; the history protocol and frozen target table remain
+the same.
+
+\subsection{CQG-AR Architecture and Optimization}
+\label{app:cqg-ar-training}
+
+CQG-AR is also trained from scratch with frozen \(E\).  It projects history
+vectors from 64 dimensions to width 384 and uses four pre-norm causal
+Transformer blocks with six heads, feed-forward dimension 1024, and dropout
+0.1.  A learned BOS vector starts continuous decoding.  At step \(\ell\), a
+linear head followed by \(\tanh\) produces
+\(\Delta_\ell\in\mathbb{R}^{64}\); a learned scalar controls its magnitude,
+and the cumulative query is
+\[
+ q^{(\ell)}=\operatorname{norm}(q^{(\ell-1)}+\Delta_\ell).
+\]
+The residual is projected back to width 384, tagged with a generated-token
+type embedding and a position embedding, and appended as the next causal
+decoder input.  The main configuration uses three steps, so the serial
+outputs are \((\Delta_1,\Delta_2,\Delta_3)\), but all three refer to the same
+next-item target \(i_t\); they are not labels for three SID levels.
+
+For the final CE recipe, only \(q^{(3)}\) receives direct catalog CE
+supervision (\texttt{intermediate\_weight}=0); earlier steps receive gradient
+through their effect on later decoding.  The depth ablation instead uses
+intermediate weight 0.3 for the non-final queries, always with the same
+next-item label.  CQG-AR uses AdamW with learning rate \(3\times10^{-4}\),
+weight decay 0.01, batch size 1024, at most 30 epochs, bfloat16 automatic
+mixed precision, gradient-norm clipping at 1.0, and early stopping with
+patience 5 on validation NDCG@10.  The selected checkpoint is evaluated
+against the full catalog after appending the validation item to the test
+history and masking all previously observed items.
+
 \subsection{Hyperparameters}
 \label{app:hparams}
 
 \begin{table}[!htbp]
 \centering
 \small
-\begin{tabular}{lrrrrrrl}
+\begin{tabular}{lrrrrrrrl}
 \toprule
-Method & $d$ & Layers & Heads & LR & Batch & Epochs/Steps & Objective \\
+Method & Item $d$ & Hidden & Layers & Heads & LR & Batch & Epochs/Steps & Objective \\
 \midrule
-SASRec item encoder & 64 & 2 & 2 & 1e-3 & 256--1024 & 400 epochs & BPR \\
-CQG-Single MSE & 256 & 4 & 4 & 1e-3 & 256 & 50 epochs & MSE to target embedding \\
-CQG-Single InfoNCE & 256 & 4 & 4 & 1e-4 & 256 & 100 epochs & In-batch InfoNCE, $\tau=0.07$ \\
-CQG-Single CE & 256 & 4 & 4 & 1e-4 & 256 & 100 epochs & Full-catalog softmax CE \\
-CQG-AR & 384 & 4 & 6 & 3e-4 & 1024 & 30 epochs & AR residuals + full-catalog CE \\
-Qwen hybrid probe & -- & -- & -- & 5e-5 & 32$\times$8 & 10 epochs & InfoNCE with projection head \\
-TIGER-style SID decoder & 384 & 4 & 6 & 1e-3 & 256 & 50K steps & Autoregressive CE over SID tokens \\
-TIGER T5/RQ-VAE reproduction & -- & -- & -- & 1e-4 & 256 & 200 epochs & Autoregressive CE over SID tokens \\
+SASRec item encoder & 64 & 64 & 2 & 2 & 1e-3 & 256 & 200/400 max. & BPR, one uniform negative \\
+CQG-Single MSE & 64 & 256 & 4 & 4 & 1e-3 & 256 & 50 max. & MSE to target embedding \\
+CQG-Single InfoNCE & 64 & 256 & 4 & 4 & 1e-4 & 256 & 100 max. & In-batch InfoNCE, $\tau=0.07$ \\
+CQG-Single CE & 64 & 256 & 4 & 4 & 1e-3 & 256 & 50 max. & Full-catalog softmax CE \\
+CQG-AR & 64 & 384 & 4 & 6 & 3e-4 & 1024 & 30 max. & AR residuals + full-catalog CE \\
+Qwen hybrid probe & 64 & -- & -- & -- & 5e-5 & 32$\times$8 & 10 & InfoNCE with projection head \\
+TIGER-style SID decoder & 64 & 384 & 4 & 6 & 1e-3 & 256 & 50K steps & Autoregressive CE over SID tokens \\
+TIGER T5/RQ-VAE reproduction & -- & -- & -- & -- & 1e-4 & 256 & 200 max. & Autoregressive CE over SID tokens \\
 \bottomrule
 \end{tabular}
-\caption{Training hyperparameters for the three datasets reported in the paper. Sequence length is 50 for ML-1M and 20 for Beauty and Sports.}
+\caption{Training hyperparameters for the three datasets. ``Hidden'' is the Transformer width; all continuous queries remain 64-dimensional. SASRec uses at most 200 epochs on ML-1M/Beauty and 400 on Sports. Sequence length is 50 for ML-1M and 20 for Beauty/Sports; ``max.'' denotes early-stopped training.}
 \label{tab:hparams}
 \end{table}
 
@@ -676,10 +780,21 @@ CQG-Single and CQG-AR use the same next-item examples derived from user historie
 \]
 where $L$ is the maximum sequence length and $B$ is the batch size. Padding positions are masked and never treated as candidate items. This dataloader is intentionally the same sequential next-item protocol used by SASRec, so the comparison isolates the output interface rather than changing the recommendation task.
 
+For example, one actual ML-1M training pair is
+\[
+([2758,1069,1445,862,1979],\,1520).
+\]
+The model input is the \(5\times64\) matrix obtained by looking up the five
+history IDs in frozen \(E\).  Under CE, the label is the integer 1520 in a
+3,417-way catalog classifier; under MSE or InfoNCE, the corresponding target
+is row \(E_{1520}\).  At test time the validation item is appended to the
+training history, the final item is the held-out target, and all items already
+present in the resulting history are masked from ranking.
+
 \subsection{Continuous Query Training Objectives}
 \label{app:cqg_losses}
 
-The MSE variant regresses the generated query $q_u$ to the frozen target embedding $e_{i^\star}$:
+The MSE variant regresses the generated query $q_u$ to the frozen target embedding $e_{i^\star}$ (the legacy CQG-Single MSE run uses the raw SASRec export):
 \[
 \mathcal{L}_{\mathrm{MSE}} =
 \|q_u - e_{i^\star}\|_2^2.
@@ -698,7 +813,11 @@ The CE variant scores the full frozen catalog:
 \frac{\exp(q_u^\top e_{i^\star}/\tau)}
 {\sum_{j=1}^{N}\exp(q_u^\top e_j/\tau)}.
 \]
-All variants can score every encoded item by dense similarity at inference time. Their empirical CatalogCoverage@$K$ is nevertheless measured from the union of finite top-$K$ outputs.
+For CQG-AR, \(q_u=q^{(3)}\) in the final recipe.  All autoregressive steps
+share the same next-item target; there is no separate label per residual.
+All variants can score every encoded item by dense similarity at inference
+time. Their empirical CatalogCoverage@$K$ is nevertheless measured from the
+union of finite top-$K$ outputs.
 
 \section{SID Construction and Decoder Training}
 \label{app:sid}
