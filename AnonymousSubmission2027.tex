@@ -333,32 +333,12 @@ $L=4$ & \textbf{0.2944} & 0.1717 & \textbf{0.6697} \\
 \label{tab:ar-depth}
 \end{table}
 
-\subsection{Published SID Results and Implementation Gap}
+\subsection{Closer SID Output Diagnostic}
 
-Table~\ref{tab:published-sid} separates our diagnostic implementation from published SID systems on Amazon Beauty. Our TIGER-style model uses hierarchical $k$-means over frozen SASRec embeddings and a small causal decoder; published TIGER uses content embeddings, an RQ-VAE tokenizer, and an encoder--decoder model. LETTER further regularizes tokenization with collaborative alignment and code diversity, while EAGER combines behavioral and semantic streams. Their higher Recall@10 shows that our absolute Beauty accuracy should not be interpreted as a faithful reproduction of the strongest SID systems. Consequently, the low Sports coverage in Table~\ref{tab:exposure-normalized} is evidence about our trained diagnostic model, not an architecture-independent effect size. Our structural interpretation instead rests on the separation between unique code assignment and incomplete beam support, the protocol-matched beam-width analysis, and existing expressiveness results for tree-structured autoregressive generation.
+In addition to our hierarchical-$k$-means diagnostic baseline, we run a closer Beauty SID recipe using the available precomputed T5/RQ-VAE codes and a T5 encoder--decoder. This run does not match the reference implementation's reported ranking accuracy, so we do not use published SID numbers as main-text benchmarks. Appendix~\ref{app:tiger_recipe} gives the exact recipe, the implementation-gap comparison, and plausible sources of the discrepancy.
 
-\paragraph{Unsuccessful TIGER reproduction.}
-In addition to our diagnostic baseline, we ran a substantially closer TIGER recipe on Beauty using the available precomputed T5/RQ-VAE codes and a T5 encoder--decoder. Across seeds 42--44, this run obtained R@10 $0.0408\pm0.0016$, below both our $k$-means diagnostic and the published TIGER value of 0.0648. We therefore did not reproduce the published Beauty result. This discrepancy should not be interpreted as evidence against the published result: the available code file, data snapshot, preprocessing, model scale, constrained decoding details, and our full-catalog evaluator may differ from the original configuration. We report the outcome to make the baseline limitation explicit, provide our exact recipe in Appendix~\ref{app:tiger_recipe}, and do not use its absolute effect size as architecture-independent evidence.
-
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{lrr}
-\toprule
-Method & Beauty R@10 & Beauty NDCG@10 \\
-\midrule
-Ours: TIGER-style & $0.0457{\pm}0.0022$ & $0.0264{\pm}0.0014$ \\
-TIGER~\citep{rajput2023tiger} & 0.0648 & 0.0384 \\
-LETTER-TIGER~\citep{zheng2024letter} & 0.0672 & 0.0364 \\
-EAGER~\citep{wang2024eager} & 0.0836 & 0.0525 \\
-\bottomrule
-\end{tabular}
-\caption{Published and reproduced SID results on Amazon Beauty. Our row is a three-seed mean and sample standard deviation under our evaluator. Published rows are transcribed from their respective papers and are not directly comparable because tokenizers, item features, model architectures, and preprocessing protocols differ. The table documents the implementation gap rather than claiming a controlled ranking among methods.}
-\label{tab:published-sid}
-\end{table}
-
-\paragraph{Output-set coverage of the closer SID recipe.}
-We also decode the full 22,363-user Beauty test set from each T5/RQ-VAE checkpoint with beam width 100 and map valid generated codes back to catalog items. Across seeds, 99.48\% of generated sequences are valid SIDs, but the union covers only $44.0\%\pm13.7\%$ of the 12,101-item catalog. The popularity gradient is consistent despite substantial seed variance: mean coverage rises from $14.0\%\pm7.6\%$ in Q1 to $88.7\%\pm13.0\%$ in Q4 (Table~\ref{tab:faithful-coverage}). Because this reproduction remains below published TIGER accuracy, it is evidence that the pattern is not unique to our hierarchical-$k$-means code assignment, but it is not a substitute for measuring the authors' published checkpoint.
+\paragraph{Output-set coverage.}
+We also decode the full 22,363-user Beauty test set from each T5/RQ-VAE checkpoint with beam width 100 and map valid generated codes back to catalog items. Across seeds, 99.48\% of generated sequences are valid SIDs, but the union covers only $44.0\%\pm13.7\%$ of the 12,101-item catalog. The popularity gradient is consistent despite substantial seed variance: mean coverage rises from $14.0\%\pm7.6\%$ in Q1 to $88.7\%\pm13.0\%$ in Q4 (Table~\ref{tab:faithful-coverage}). Because this reproduction has an unresolved ranking-accuracy gap (Appendix~\ref{app:tiger_recipe}), it shows only that the coverage pattern is not unique to our hierarchical-$k$-means code assignment; it is not a substitute for measuring the reference implementation's checkpoint.
 
 \begin{table}[t]
 \centering
@@ -516,7 +496,7 @@ For static catalogs with strong top-10 precision requirements, SID methods remai
 
 \section{Limitations}
 
-Our study has several limitations. Matched-target subsampling reduces unequal target counts across popularity groups but remains observational rather than a causal intervention on user demand. The strongest completed crossover analysis is on ML-1M; a protocol-matched Amazon crossover is required for full cross-dataset confirmation. Our TIGER-style comparison uses hierarchical k-means over SASRec embeddings, and our closer T5/RQ-VAE recipe still fails to reproduce the published Beauty R@10, as documented in Table~\ref{tab:published-sid} and Appendix~\ref{app:tiger_recipe}. Thus, its absolute effect sizes must not be generalized to a fully reproduced TIGER checkpoint. The current CQG-AR residual steps share one next-item target and provide only limited improvement over its $L=1$ boundary. Both continuous methods use full-catalog softmax in their strongest configurations, which needs sampling or ANN-negative approximations at million-item scale. Finally, CQG-Single and CQG-AR inherit preference-relevant errors in the frozen item space.
+Our study has several limitations. Matched-target subsampling reduces unequal target counts across popularity groups but remains observational rather than a causal intervention on user demand. The strongest completed crossover analysis is on ML-1M; a protocol-matched Amazon crossover is required for full cross-dataset confirmation. Our TIGER-style comparison uses hierarchical k-means over SASRec embeddings, and our closer T5/RQ-VAE recipe does not match the reference implementation's reported Beauty accuracy, as documented in Appendix~\ref{app:tiger_recipe}. Thus, its absolute effect sizes must not be generalized to a fully reproduced TIGER checkpoint. The current CQG-AR residual steps share one next-item target and provide only limited improvement over its $L=1$ boundary. Both continuous methods use full-catalog softmax in their strongest configurations, which needs sampling or ANN-negative approximations at million-item scale. Finally, CQG-Single and CQG-AR inherit preference-relevant errors in the frozen item space.
 
 \section{Conclusion}
 
@@ -705,14 +685,57 @@ python main.py --dataset\_path ../data/Beauty\\
 --lr 1e-4 --beam\_size 30 --seed \{42,43,44\}.
 \end{quote}
 
-This recipe yields Beauty R@10 $0.0408\pm0.0016$, whereas TIGER reports
-0.0648. Plausible sources of the remaining gap include the data and
-preprocessing snapshot paired with the code file, content-feature generation,
-tokenizer checkpoint, model scale, decoding constraints, and evaluator
-details. Because we cannot identify a single controlled cause, we report the
-gap rather than tuning against the published test number. Measurements from
-this reproduction are labeled separately from published TIGER throughout the
-paper.
+This recipe yields Beauty R@10 $0.0408\pm0.0016$, whereas the reference
+implementation reports a higher value (Table~\ref{tab:published-sid}). We do
+not treat that published value as a benchmark in the main experiments because
+the comparison is not protocol matched. Plausible, non-exclusive sources of
+the remaining gap are:
+\begin{itemize}
+    \item \textbf{Code and data snapshot.} We use an available precomputed SID
+    array and its paired Beauty directory; these may not be byte-identical to
+    the tokenizer checkpoint and processed split used for the reported result.
+    \item \textbf{Item features and tokenizer training.} The precomputed codes
+    prevent us from verifying or retraining the exact content-feature
+    extraction, RQ-VAE initialization, codebook optimization, and collision
+    handling pipeline.
+    \item \textbf{Model and optimization recipe.} Decoder scale, initialization,
+    batch construction, learning-rate schedule, regularization, stopping
+    criterion, and checkpoint selection can all affect ranking accuracy.
+    \item \textbf{Constrained decoding.} Trie construction, invalid-code
+    filtering, beam width, length normalization, duplicate removal, and the
+    mapping from completed codes to items need not match the reference
+    implementation exactly.
+    \item \textbf{Evaluator protocol.} We use our leave-one-out, historical-item
+    filtering, and full-catalog evaluator. Differences in history construction,
+    candidate filtering, item indexing, and metric implementation can change
+    the reported values.
+\end{itemize}
+Because these factors change together, the present experiment cannot identify
+a single causal source of the gap. We therefore report the discrepancy for
+transparency, avoid tuning against the published test number, and label all
+measurements from this reproduction separately.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Method & Beauty R@10 & Beauty NDCG@10 \\
+\midrule
+Ours: TIGER-style & $0.0457{\pm}0.0022$ & $0.0264{\pm}0.0014$ \\
+TIGER~\citep{rajput2023tiger} & 0.0648 & 0.0384 \\
+LETTER-TIGER~\citep{zheng2024letter} & 0.0672 & 0.0364 \\
+EAGER~\citep{wang2024eager} & 0.0836 & 0.0525 \\
+\bottomrule
+\end{tabular}
+\caption{Published and reproduced SID results on Amazon Beauty, provided only
+to document the implementation gap. Our row is a three-seed mean and sample
+standard deviation under our evaluator. Published rows are transcribed from
+their respective papers and are not controlled benchmarks: tokenizers, item
+features, model architectures, data processing, decoding, and evaluation
+protocols differ.}
+\label{tab:published-sid}
+\end{table}
 
 \subsection{TIGER-Style Dataloader}
 \label{app:tiger_dataloader}
