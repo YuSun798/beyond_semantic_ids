@@ -126,7 +126,7 @@ h_\ell &= D_\phi(c_u,\Delta_{<\ell}),\\
 \hat e_u^{(\ell)} &=
 \operatorname{norm}\!\left(\hat e_u^{(\ell-1)}+\Delta_\ell\right).
 \end{align}
-The generated residual $\Delta_\ell$ is projected back into the decoder input space and appended as the next autoregressive input. After $L$ steps, the refined query $\hat e_u^{(L)}$ retrieves items from the same frozen embedding matrix $E$. Thus CQG-AR preserves the conditional, step-wise decoding structure of SID retrieval while removing the SID vocabulary, codebook lookup, and discrete beam expansion. The $L=1$ setting is its single-step boundary and provides a controlled link to CQG-Single.
+The generated residual $\Delta_\ell$ is projected back into the decoder input space and appended as the next autoregressive input. After $L$ steps, the refined query $\hat e_u^{(L)}$ retrieves items from the same frozen embedding matrix $E$. Thus CQG-AR preserves the conditional, step-wise decoding structure of SID retrieval while removing the SID vocabulary, codebook lookup, and discrete beam expansion. We use $L=3$ as an architecture-matched control for the three-level SID output, rather than assuming that three continuous refinements are intrinsically necessary. The $L=1$ setting is its single-step boundary and provides a controlled link to CQG-Single.
 
 \subsection{Training Objectives}
 
@@ -310,6 +310,26 @@ CQG-AR ($L=3$) & 5.62M & $0.2946{\pm}0.0029$ & $0.1704{\pm}0.0035$ \\
 \label{tab:ml1m}
 \end{table}
 
+\paragraph{How many continuous decoding steps are necessary?}
+Table~\ref{tab:ar-depth} varies CQG-AR depth while holding the seed, architecture, data, objective, and intermediate-loss weight fixed. Increasing $L$ from one to four does not monotonically improve shallow accuracy: all four R@10 values lie within 0.0035, and $L=1$ is competitive with the three-step SID-matched variant. This indicates that, in the current frozen item space, a single 64-dimensional continuous query can retain most of the useful retrieval signal obtained by the multi-step control. The practical implication is fewer serial decoder calls: $L=1$ removes two refinement rounds relative to $L=3$, while both avoid discrete beam expansion. We interpret this as an architectural efficiency advantage, not as measured end-to-end latency or a claim that one vector universally replaces every hierarchical SID.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+CQG-AR depth & R@10 & NDCG@10 & R@100 \\
+\midrule
+$L=1$ & 0.2924 & \textbf{0.1719} & 0.6550 \\
+$L=2$ & 0.2909 & 0.1688 & 0.6525 \\
+$L=3$ & 0.2914 & 0.1667 & 0.6619 \\
+$L=4$ & \textbf{0.2944} & 0.1717 & \textbf{0.6697} \\
+\bottomrule
+\end{tabular}
+\caption{Single-seed CQG-AR decoding-depth ablation on ML-1M. All rows use seed 42, full-catalog CE, and intermediate-loss weight 0.3. Additional continuous refinements do not yield a monotonic R@10 or NDCG@10 improvement.}
+\label{tab:ar-depth}
+\end{table}
+
 \subsection{Published SID Results and Implementation Gap}
 
 Table~\ref{tab:published-sid} separates our diagnostic implementation from published SID systems on Amazon Beauty. Our TIGER-style model uses hierarchical $k$-means over frozen SASRec embeddings and a small causal decoder; published TIGER uses content embeddings, an RQ-VAE tokenizer, and an encoder--decoder model. LETTER further regularizes tokenization with collaborative alignment and code diversity, while EAGER combines behavioral and semantic streams. Their higher Recall@10 shows that our absolute Beauty accuracy should not be interpreted as a faithful reproduction of the strongest SID systems. Consequently, the low Sports coverage in Table~\ref{tab:exposure-normalized} is evidence about our trained diagnostic model, not an architecture-independent effect size. Our structural interpretation instead rests on the separation between unique code assignment and incomplete beam support, the protocol-matched beam-width analysis, and existing expressiveness results for tree-structured autoregressive generation.
@@ -489,7 +509,7 @@ The reachability ceiling is not the same as poor model accuracy. For a fixed tra
 The Crossover Phenomenon describes a depth-dependent empirical pattern rather than a universal ranking theorem. At R@10, concentrated autoregressive probability can help; deeper in the list, finite beam support can become a bottleneck in the evaluated systems. CQG-Single and CQG-AR both keep every encoded item scoreable, but their query quality depends on embedding alignment. CQG-Single achieves the strongest current ML-1M R@10, whereas CQG-AR approximately matches TIGER-style accuracy with lower seed variance; this indicates that continuous output can preserve autoregressive modeling without requiring SID tokens, but autoregressive refinement is not automatically superior to one-step generation.
 
 \textbf{Practical implications.}
-For static catalogs with strong top-10 precision requirements, SID methods remain competitive. Continuous-query retrieval offers a simpler score-and-index interface and can coexist with existing rankers as a recall stage. Whether this interface yields better latency, memory use, or cold-item accuracy at production scale remains to be tested.
+For static catalogs with strong top-10 precision requirements, SID methods remain competitive. Continuous-query retrieval offers a simpler score-and-index interface and can coexist with existing rankers as a recall stage. The depth ablation further shows that a single continuous output is competitive with multi-step continuous refinement in our setting, so three-level generation is useful as an architecture-matched control but is not required for the strongest continuous-query design. This removes serial refinement steps in addition to avoiding SID beam expansion; whether the resulting interface yields better end-to-end latency, memory use, or cold-item accuracy at production scale remains to be measured.
 
 \section{Limitations}
 
@@ -497,7 +517,7 @@ Our study has several limitations. Matched-target subsampling reduces unequal ta
 
 \section{Conclusion}
 
-This paper studies finite-beam output support as a practical bottleneck in SID-based generative recommendation. In our evaluated models, target-conditioned support and empirical output coverage are incomplete and popularity-skewed, and a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Single demonstrates a minimal one-step continuous query, while CQG-AR shows that an autoregressive decoder can replace discrete SID tokens with continuous residual outputs and retain competitive accuracy. Together they separate the value of autoregression from the constraints of a discrete output vocabulary. The results motivate protocol-matched evaluation of continuous and discrete retrieval interfaces, including accuracy, target support, and matched-budget catalog coverage.
+This paper studies finite-beam output support as a practical bottleneck in SID-based generative recommendation. In our evaluated models, target-conditioned support and empirical output coverage are incomplete and popularity-skewed, and a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Single demonstrates a minimal one-step continuous query, while CQG-AR shows that an autoregressive decoder can replace discrete SID tokens with continuous residual outputs and retain competitive accuracy. The depth ablation finds no monotonic shallow-accuracy gain from additional continuous generation steps, indicating that one generated embedding can be a competitive and more serially efficient alternative to a three-level output in the evaluated setting. Together these results separate the value of autoregression from the constraints of a discrete output vocabulary and motivate protocol-matched evaluation of accuracy, target support, and matched-budget catalog coverage.
 
 \bibliography{references}
 
