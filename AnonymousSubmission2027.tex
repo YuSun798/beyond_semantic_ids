@@ -205,7 +205,7 @@ We first train SASRec on the same chronological next-item task used by the basel
 
 For a fixed SID model and beam width $B$, target support is the fraction of test users whose held-out target occurs anywhere in the unfiltered beam. On ML-1M, the canonical seed-42 TIGER-style model has TargetSupport@100 of 63.8\%. This is a per-user quantity closely related to Recall@100; it is not the fraction of catalog items retrieved. Table~\ref{tab:reachability} stratifies this target-conditioned diagnostic by target popularity. We report empirical catalog coverage separately as the union of top-$K$ output items under a matched $K$ for SID, CQG-Single, and CQG-AR.
 
-This target-conditioned metric is affected by the unequal number and frequency of targets in each popularity group. Figure~\ref{fig:reachability} visualizes the raw skew. We therefore also repeatedly sample the same number of distinct test-target items from each quartile and measure whether each sampled target occurs in the beam for its associated test instance. Table~\ref{tab:exposure-normalized} reports this matched-target diagnostic. It should be interpreted as popularity-stratified target support, not independent catalog coverage.
+This target-conditioned metric is affected by the unequal number and frequency of targets in each popularity group. Figure~\ref{fig:reachability} visualizes the raw skew. We therefore also repeatedly sample the same number of distinct test-target items from each quartile and measure whether each sampled target occurs in the beam for its associated test instance. Table~\ref{tab:exposure-normalized} reports this matched-target diagnostic for the TIGER-style SID model. Tables~\ref{tab:reachability} and~\ref{tab:exposure-normalized} are SID-only beam diagnostics; they do not combine CQG-Single and CQG-AR. The continuous methods are compared separately using matched finite-output CatalogCoverage@$K$, because dense scoreability is not a SID beam-support quantity.
 
 \begin{table}[t]
 \centering
@@ -222,7 +222,7 @@ Q4 popular & 3,945 & 65.3 & 70.8\% \\
 Overall & 6,040 & 100.0 & 63.8\% \\
 \bottomrule
 \end{tabular}
-\caption{TIGER target support by held-out target popularity on ML-1M with beam width 100. Rows are user-weighted hit rates; therefore their weighted aggregate is 63.8\%. They are not equal-size catalog-item coverage estimates.}
+\caption{TIGER-style SID target support by held-out target popularity on ML-1M, seed 42, beam width 100. No CQG result is included in this table. Rows are user-weighted hit rates; therefore their weighted aggregate is 63.8\%. They are not equal-size catalog-item coverage estimates.}
 \label{tab:reachability}
 \end{table}
 
@@ -233,6 +233,7 @@ Overall & 6,040 & 100.0 & 63.8\% \\
 \toprule
 Dataset & Target quartile & Matched support & Std. \\
 \midrule
+\multicolumn{4}{l}{\textit{Method: TIGER-style SID}} \\
 ML-1M & Q1 rare & 25.3\% & 0.0\% \\
 ML-1M & Q2 & 46.2\% & 2.9\% \\
 ML-1M & Q3 & 54.8\% & 3.6\% \\
@@ -244,7 +245,7 @@ Sports & Q3 & 4.64\% & 1.32\% \\
 Sports & Q4 popular & 15.46\% & 2.31\% \\
 \bottomrule
 \end{tabular}
-\caption{Matched-target beam support by popularity quartile. We repeatedly subsample the same number of distinct test targets per quartile and report mean and standard deviation over 200 trials. This controls target-set size but remains a target-conditioned metric.}
+\caption{TIGER-style SID matched-target beam support by popularity quartile; CQG-Single and CQG-AR are not included. We repeatedly subsample the same number of distinct test targets per quartile and report mean and standard deviation over 200 trials. This controls target-set size but remains a target-conditioned metric.}
 \label{tab:exposure-normalized}
 \end{table}
 
