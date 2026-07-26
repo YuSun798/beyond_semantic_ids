@@ -29,7 +29,7 @@
 \maketitle
 
 \begin{abstract}
-Generative recommendation (GR) has recently emerged as a powerful paradigm, retrieving items by autoregressively decoding discrete Semantic IDs (SIDs) over learned codebooks. While this paradigm has demonstrated competitive performance, it fundamentally relies on beam search for inference. In this paper, we study a structural bottleneck in SID-based models: the Beam Search Reachability Ceiling. Motivated by recent expressiveness analyses of autoregressive SID generation, we empirically examine how a constrained code-tree decoder distributes retrieval support across items. We find that raw beam coverage is highly skewed by item popularity in standard SID-style models, suggesting that tail items can receive substantially less retrieval support than popular items. To isolate the role of the discrete output interface, we introduce two parallel continuous-query methods in a stable, frozen item space: CQG-Single generates one query in a single forward pass, while CQG-AR autoregressively generates continuous residuals that refine the retrieval query. Both remove the item-token vocabulary and retrieve by dense scoring or approximate nearest-neighbor search. Through controlled experiments across standard benchmarks, we observe a depth-dependent ``Crossover Phenomenon'': SID-based models can be competitive at shallow top-K retrieval, while continuous-query retrieval becomes more favorable in deeper and coverage-oriented settings. CQG-AR further provides an architecture-matched test of whether autoregression requires discrete SID outputs. Our findings challenge the assumption that Semantic IDs are necessary infrastructure for generative recommendation and motivate further study of continuous retrieval interfaces.
+Generative recommendation (GR) retrieves items by autoregressively decoding discrete Semantic IDs (SIDs) over learned codebooks, typically with finite-width beam search. We study how this practical search budget distributes retrieval support across items. We distinguish three quantities that are often conflated: whether an item has a unique code, whether it can be scored by an interface, and whether it actually appears in a finite top-$K$ output. To isolate the output interface, we introduce two continuous-query methods in a shared frozen item space: CQG-Single generates one query in a single forward pass, while CQG-AR autoregressively generates continuous residuals that refine the query. Both remove the item-token vocabulary and retrieve by dense scoring or approximate nearest-neighbor search. Controlled diagnostics show popularity-dependent SID target support and a depth-dependent transition in which SID decoding can be competitive at shallow $K$, while continuous retrieval can become more favorable deeper in the ranked list. CQG-AR provides an architecture-matched test of whether autoregression requires discrete SID outputs. Our results motivate matched-budget evaluation of discrete and continuous retrieval interfaces rather than treating catalog-wide scoreability as empirical top-$K$ coverage.
 \end{abstract}
 
 \section{Introduction}
@@ -37,7 +37,7 @@ Generative recommendation (GR) has recently emerged as a powerful paradigm, retr
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.8\textwidth]{Figures/fig1_1_pipeline.pdf}
-\caption{SID pipeline versus CQG-Rec pipeline. SID systems first tokenize items with a discrete tokenizer such as RQ-VAE or hierarchical k-means, then use autoregressive decoding and beam search before mapping generated codes back to items. CQG-Rec generates a continuous query and retrieves directly in a frozen item embedding space, making all encoded items scoreable by dense retrieval or ANN.}
+\caption{Discrete SID retrieval versus the two continuous-query methods. SID systems tokenize items and autoregressively expand code paths with beam search. CQG-Single generates one continuous query; CQG-AR autoregressively refines continuous residuals. Both continuous methods retrieve in a frozen item space by dense scoring or ANN.}
 \label{fig:pipeline}
 \end{figure*}
 
@@ -49,18 +49,18 @@ These steps introduce two practical bottlenecks: The first is coverage and updat
 
 Moreover, the same discrete infrastructure also creates a structural bottleneck. SID systems depend on beam search at inference time. Beam search explores only a prefix-limited subset of the exponentially large code tree, and recent theoretical work shows that autoregressive tree generation imposes nontrivial expressiveness constraints \citep{hou2026expressiveness}. In other words, an item can have a valid SID and still receive zero retrieval probability if its path never enters the beam. This distinction is important: code assignment and code retrieval are different problems.
 
-This paper asks a concrete question: \emph{how does the beam-search reachability ceiling manifest in standard recommendation benchmarks?} Aggregate Recall@K does not answer this question, because it mixes popular and rare items. We therefore measure item-level beam coverage and stratify it by training frequency. We use TIGER \citep{rajput2023tiger}, a representative SID-based generative recommender that assigns items hierarchical semantic codes and decodes them autoregressively, as our main SID reference point. On ML-1M, a TIGER-style SID model with beam width 100 reaches 63.8\% of catalog items overall, and the raw coverage is much lower for rare items than for popular items. At the same time, code collisions are negligible: 99.4\% of items receive unique codes. This suggests that the bottleneck is not only codebook capacity; inference-side exploration also matters. To control for uneven exposure opportunities across popularity strata, we additionally report an exposure-normalized variant that subsamples the same number of target items per quartile. The normalized gap remains large on both ML-1M and Sports.
+This paper asks a concrete question: \emph{how does finite beam search distribute support across the popularity spectrum?} Aggregate Recall@$K$ can hide this structure because it mixes popular and rare targets. We therefore stratify target support by training frequency and separately measure the union of actually retrieved top-$K$ items. We use TIGER \citep{rajput2023tiger} as the SID reference point. In the canonical ML-1M diagnostic, 99.4\% of items receive unique codes, yet only 63.8\% of held-out targets occur anywhere in the width-100 beam. The first statistic concerns code assignment; the second is a target-conditioned support rate, not catalog coverage. Their coexistence motivates studying inference-side exploration after code assignment succeeds. We additionally use matched resampling to control unequal target exposure across popularity strata.
 
-This support limitation creates a second empirical pattern that we call the \emph{Crossover Phenomenon}. At very shallow retrieval depth, SID models can still perform well because autoregressive decoding concentrates probability mass on high-confidence paths. On rare items in ML-1M, TIGER outperforms a continuous alternative at R@10. But as K increases, the beam exhausts its reachable set. A vocabulary-free continuous retriever continues to retrieve from the full catalog and overtakes SID retrieval at deeper K. On the rarest quartile, TIGER and the continuous model tie at R@90 = 0.2396, matching the measured rare-item support under the current beam setting.
+This support limitation motivates a second empirical pattern that we call the \emph{Crossover Phenomenon}. At shallow retrieval depth, SID models can perform well because autoregressive decoding concentrates probability mass on high-confidence paths. On rare ML-1M targets, TIGER outperforms a continuous alternative at R@10; at deeper $K$, the continuous model catches up or overtakes. We treat this as a depth-dependent empirical transition, not as proof that a per-user hit rate equals an item-level catalog-coverage ceiling.
 
 To isolate this mechanism, we study two complementary methods. \textbf{CQG-Single} is a deliberately minimal vocabulary-free model that maps user context to one continuous query in a frozen item space. \textbf{CQG-AR} retains a TIGER-like autoregressive decoder but replaces SID-token prediction with continuous residual generation, feeding each generated residual back to refine the query. Both retrieve by dense scoring or approximate nearest-neighbor (ANN) search without a code-to-item lookup. CQG-Single tests the simplest continuous interface, while CQG-AR controls for autoregressive model structure.
 
 Our contributions are:
 \begin{itemize}
-    \item \textbf{Beam-support diagnostics.} We empirically quantify how beam-search support varies across the item popularity spectrum and show that the skew remains after exposure-normalized quartile subsampling.
+    \item \textbf{Matched beam-support diagnostics.} We distinguish unique-code assignment, target-conditioned beam support, catalog-wide scoreability, and empirical union-of-top-$K$ coverage, and stratify the output-based quantities by item popularity.
     \item \textbf{Crossover Phenomenon.} We identify a depth-dependent tradeoff: SID decoding can win at shallow top-K precision, but continuous retrieval overtakes at deeper K as the beam-search ceiling binds.
     \item \textbf{Parallel continuous-query methods.} We introduce CQG-Single, a one-step continuous retriever, and CQG-AR, an autoregressive continuous decoder. Their comparison separates the effect of autoregression from the effect of a discrete SID vocabulary.
-    \item \textbf{Controlled empirical study.} Across ML-1M, Amazon Beauty, and Amazon Sports, we analyze retrieval quality, reranked performance, loss functions, LLM backbone failures, tokenization instability, and scalability.
+    \item \textbf{Controlled empirical study.} Across ML-1M, Amazon Beauty, and Amazon Sports, we analyze retrieval quality, reranked performance, loss functions, LLM backbone failures, and tokenization instability while limiting scalability claims to the tested catalog sizes.
 \end{itemize}
 
 \section{Related Work}
@@ -68,25 +68,25 @@ Our contributions are:
 
 
 \textbf{Semantic-ID generative recommendation.}
-TIGER \citep{rajput2023tiger} introduced hierarchical Semantic IDs using residual vector quantization and autoregressive decoding. Subsequent work improves code learning, alignment, and model design: LETTER integrates collaborative semantics \citep{zheng2024letter}, EAGER introduces behavior-semantic collaboration \citep{wang2024eager}, IDGenRec studies textual IDs \citep{tan2024idgenrec}, DIGER proposes differentiable indexing \citep{fu2026diger}, and UniGRec explores soft identifiers \citep{li2026unigrec}. These methods differ in how identifiers are constructed and aligned, but they retain a discrete vocabulary interface and typically require constrained autoregressive decoding. Our work targets a shared property of this family: the reachability ceiling induced by beam search over a structured identifier space.
+TIGER \citep{rajput2023tiger} introduced hierarchical Semantic IDs using residual vector quantization and autoregressive decoding. Subsequent work improves code learning, alignment, and model design: LETTER integrates collaborative semantics \citep{zheng2024letter}, EAGER introduces behavior-semantic collaboration \citep{wang2024eager}, IDGenRec studies textual IDs \citep{tan2024idgenrec}, DIGER proposes differentiable indexing \citep{fu2026diger}, and UniGRec explores soft identifiers \citep{li2026unigrec}. These methods differ in how identifiers are constructed and aligned, but they retain a discrete vocabulary interface and typically require constrained autoregressive decoding. Our work targets a practical property of this family: finite-width search can allocate output support unevenly over a structured identifier space.
 
 \textbf{Reachability and expressiveness limits.}
-Theoretical work has begun to formalize limitations of tree-structured generative retrieval. \citet{hou2026expressiveness} show that autoregressive tree generation imposes correlation constraints that limit representable item distributions. This analysis motivates our empirical question: how do support constraints appear in practical SID-style recommendation pipelines? We complement this line of work by measuring beam coverage, exposure-normalized reachability, and retrieval-depth behavior under controlled comparisons.
+Theoretical work has begun to formalize limitations of tree-structured generative retrieval. \citet{hou2026expressiveness} show that autoregressive tree generation imposes correlation constraints that limit representable item distributions. This analysis motivates our empirical question: how do support constraints appear in practical SID-style recommendation pipelines? We complement this line of work by measuring target-conditioned beam support, matched-budget output coverage, and retrieval-depth behavior under controlled comparisons.
 
 \textbf{Popularity bias in SID systems.}
-Recent work also studies training-side popularity bias. For example, tail tokens may receive fewer updates under maximum-likelihood training, motivating modified objectives or tokenization schemes. Our analysis is complementary: even when code assignment succeeds, code retrieval can fail. In our ML-1M experiments, 99.4\% of items receive unique codes, yet only 63.8\% are ever reachable under beam width 100. After exposure normalization, popular-quartile items still show substantially higher reachability than rare-quartile items. This separates training-side code quality from inference-side exploration.
+Recent work also studies training-side popularity bias. For example, tail tokens may receive fewer updates under maximum-likelihood training, motivating modified objectives or tokenization schemes. Our analysis is complementary: even when code assignment succeeds, a held-out target can be absent from a finite beam. In our ML-1M experiments, 99.4\% of items receive unique codes, yet only 63.8\% of test instances have their target in the width-100 beam. Under matched-target resampling, popular-quartile targets still show substantially higher support than rare-quartile targets. This separates code-assignment success from inference-side exploration without conflating a per-user hit rate with catalog coverage.
 
 \textbf{Vocabulary-free and continuous recommendation.}
 Continuous alternatives avoid discrete item vocabularies. DiffuRec \citep{li2023diffurec}, DreamRec \citep{yang2023dreamrec}, and ContRec \citep{qu2026contrec} use diffusion or continuous latent generation. GPT4Rec \citep{li2023gpt4rec} generates textual queries for retrieval. CQG-Single occupies a deliberately minimal point in this design space, while CQG-AR preserves step-wise generation with continuous outputs. The contribution is not that continuous retrieval exists, but that these paired interfaces expose the SID reachability ceiling and separate discrete output constraints from autoregressive modeling.
 
 \textbf{Sequential and dual-encoder recommendation.}
-Sequential recommendation models such as GRU4Rec \citep{hidasi2016gru4rec}, SASRec \citep{kang2018sasrec}, and BERT4Rec \citep{sun2019bert4rec} score candidate items from user histories. Dual-encoder retrieval originates from neural information retrieval \citep{huang2013dssm} and is widely deployed in large-scale recommendation \citep{covington2016youtube}. CQG-Single inherits the dense retrieval interface, whereas CQG-AR adds continuous autoregressive refinement. Their experimental role is to probe the vocabulary and beam-search assumptions in generative recommendation.
+Sequential recommendation models such as GRU4Rec \citep{hidasi2016gru4rec}, SASRec \citep{kang2018sasrec}, and BERT4Rec \citep{sun2019bert4rec} score candidate items from user histories; P5 casts multiple recommendation tasks as language processing \citep{geng2022p5}. Dual-encoder retrieval originates from neural information retrieval \citep{huang2013dssm} and is widely deployed in large-scale recommendation \citep{covington2016youtube}. CQG-Single inherits the dense retrieval interface, whereas CQG-AR adds continuous autoregressive refinement. Their experimental role is to probe the vocabulary and beam-search assumptions in generative recommendation.
+
+\textbf{Generative and hybrid retrieval.}
+Generative retrieval in information retrieval directly decodes document identifiers, as in DSI and NCI \citep{tay2022dsi,wang2022nci}, and therefore shares questions about identifier design and constrained decoding with SID recommendation. LIGER explicitly combines dense and generative retrieval for sequential recommendation and studies their effectiveness and efficiency tradeoffs \citep{yang2024liger}. Our study is complementary: we compare finite-output support under matched budgets and use CQG-AR to separate autoregressive decoding from a discrete identifier vocabulary. These prior systems also make clear that dense retrieval is not itself our novelty claim.
 
 \textbf{Scope of novelty.}
-Dense retrieval and its catalog-wide scoring property are established techniques; we do not claim either as a new retrieval architecture. Our contribution is the controlled use of a frozen-space dense retriever to isolate the discrete inference interface, followed by item-level and popularity-stratified measurements of SID beam coverage and its depth-dependent interaction with Recall@$K$. This experimental design separates code assignment from code retrieval and makes the observed ceiling testable without attributing gains to a larger encoder or a more elaborate ranker.
-
-
-
+Dense retrieval and its catalog-wide scoring property are established techniques; we do not claim either as a new retrieval architecture. Our contribution is a controlled comparison in a shared frozen item space, together with item-level and popularity-stratified measurements of finite SID output support and its depth-dependent interaction with Recall@$K$. CQG-Single supplies a minimal dense control, whereas CQG-AR tests the same question with autoregressive continuous outputs. This design separates code assignment from code retrieval without attributing gains to a larger item encoder or a more elaborate ranker.
 \section{Method}
 
 \subsection{Problem Formulation}
@@ -167,19 +167,12 @@ Standalone CQG-Single ranks items according to $q_u^\top e_i$, while CQG-AR uses
 \subsection{Contrast with SID Retrieval}
 
 Figure~\ref{fig:pipeline} compares the inference mechanisms. SID retrieval requires codebook learning, autoregressive discrete decoding, beam search, and code-to-item lookup. Under a finite beam budget, only a restricted subset of valid code paths is explored. CQG-Single uses single-step continuous generation, whereas CQG-AR retains autoregressive decoding with continuous outputs. Both continuous variants query a dense index without introducing an item-token vocabulary.
-
-% \begin{figure*}[t]
-% \centering
-% \includegraphics[width=0.9\textwidth]{Figures/fig1_1_pipeline.pdf}
-% \caption{Discrete SID retrieval and the two continuous-query methods. SID systems tokenize items and autoregressively expand discrete code paths. CQG-Single generates one continuous query, while CQG-AR autoregressively refines continuous residuals before ANN retrieval.}
-% \label{fig:pipeline}
-% \end{figure*}
 \section{Experiments}
 
 \subsection{Experimental Setup}
 
 \textbf{Datasets.}
-We use MovieLens-1M (ML-1M), Amazon Beauty, and Amazon Sports in the current main-result tables. ML-1M is the primary reachability benchmark because its catalog is small enough for exact full-catalog analysis. Beauty and Sports test cross-domain behavior. We omit Yelp from the current main tables because the corresponding SID and continuous baselines are not yet aligned under the same evaluation protocol.
+We use MovieLens-1M (ML-1M), Amazon Beauty, and Amazon Sports. ML-1M is the primary controlled diagnostic because its catalog is small enough for exact full-catalog scoring. Beauty and Sports test cross-domain behavior. Our processed Sports split (21,519 users and 10,694 items) differs from the commonly reported 5-core split used by TIGER, LETTER, and EAGER; consequently, we do not directly compare our Sports values with their published numbers. We exclude Yelp because its SID and continuous baselines are not aligned under one evaluation protocol.
 
 \begin{table}[t]
 \centering
@@ -193,7 +186,7 @@ Beauty & 22,363 & 12,102 & 198K & 0.07\% \\
 Sports & 21,519 & 10,694 & $\sim$178K & 0.08\% \\
 \bottomrule
 \end{tabular}
-\caption{Dataset statistics for datasets reported in the current main tables.}
+\caption{Dataset statistics. The processed Sports split differs from the standard 5-core split used in several published SID studies, so its results are treated as within-paper diagnostics.}
 \label{tab:data}
 \end{table}
 
@@ -201,25 +194,25 @@ Sports & 21,519 & 10,694 & $\sim$178K & 0.08\% \\
 We use leave-one-out evaluation: the last item is held out for testing, the second-to-last item for validation, and earlier interactions for training. Historical items are excluded from ranking. We report Recall@K and NDCG@K, primarily for $K\in\{10,30,50,70,90\}$ in reachability analysis and $K\in\{5,10,20\}$ in cross-dataset evaluation.
 
 \textbf{Baselines.}
-We compare against SASRec \citep{kang2018sasrec}, GRU4Rec \citep{hidasi2016gru4rec}, BERT4Rec \citep{sun2019bert4rec}, popularity ranking, TIGER-style SID retrieval \citep{rajput2023tiger}, and reported SID results from TIGER, LETTER, and EAGER where available. We also include non-learned dense retrieval baselines: random retrieval, last-item kNN, and mean-of-5 kNN.
+We compare against SASRec \citep{kang2018sasrec}, TIGER-style SID retrieval \citep{rajput2023tiger}, and reported SID results from TIGER, LETTER, and EAGER where protocols permit contextual comparison. We also include non-learned dense retrieval baselines: random retrieval, last-item kNN, and mean-of-5 kNN.
 
 \textbf{Model training protocol.}
 We first train SASRec on the same chronological next-item task used by the baselines, freeze its item embeddings, and then train the query generator in that fixed space. The multimodal Sports experiment instead freezes a fusion of these embeddings and ImageNet-pretrained ResNet-18 features. Holding the item space fixed isolates the retrieval interface; full architecture and objective details appear in Section~\ref{app:training}.
 
 \section{Results}
 
-\subsection{Beam Search Reachability Ceiling}
+\subsection{Finite-Beam Target Support}
 
-For a fixed SID model and beam width, we define raw item coverage as the fraction of catalog items that appear in at least one beam output over the test users. This diagnostic measures whether the inference procedure retrieves an item anywhere in the evaluation set. On ML-1M, a TIGER-style model with beam width 100 covers 63.8\% of catalog items overall. The raw coverage is highly nonuniform across item popularity quartiles (Table~\ref{tab:reachability}).
+For a fixed SID model and beam width $B$, target support is the fraction of test users whose held-out target occurs anywhere in the unfiltered beam. On ML-1M, the canonical seed-42 TIGER-style model has TargetSupport@100 of 63.8\%. This is a per-user quantity closely related to Recall@100; it is not the fraction of catalog items retrieved. Table~\ref{tab:reachability} stratifies this target-conditioned diagnostic by target popularity. We report empirical catalog coverage separately as the union of top-$K$ output items under a matched $K$ for SID, CQG-Single, and CQG-AR.
 
-This raw metric has an important confound: popular-item quartiles have more associated test users, and therefore more opportunities to appear in the union of beam outputs. Figure~\ref{fig:reachability} visualizes the raw skew. We therefore also compute an exposure-normalized estimate by repeatedly subsampling the same number of target items from each popularity quartile and measuring whether each sampled item appears in any test-user beam output. Table~\ref{tab:exposure-normalized} shows that the skew remains after normalization. On ML-1M, normalized reachability increases from 25.3\% for the rarest quartile to 70.9\% for the most popular quartile. On Sports, where the catalog is sparser, the corresponding values are 0.39\% and 15.46\%. Thus, unequal exposure opportunities amplify the raw gap, but they do not fully explain it.
+This target-conditioned metric is affected by the unequal number and frequency of targets in each popularity group. Figure~\ref{fig:reachability} visualizes the raw skew. We therefore also repeatedly sample the same number of distinct test-target items from each quartile and measure whether each sampled target occurs in the beam for its associated test instance. Table~\ref{tab:exposure-normalized} reports this matched-target diagnostic. It should be interpreted as popularity-stratified target support, not independent catalog coverage.
 
 \begin{table}[t]
 \centering
 \small
 \begin{tabular}{lrrr}
 \toprule
-Quartile & Users & \% Test & Raw Beam Coverage \\
+Target quartile & Users & \% Test & TargetSupport@100 \\
 \midrule
 Q1 rare & 192 & 3.2 & 24.0\% \\
 Q2 & 582 & 9.6 & 47.1\% \\
@@ -229,7 +222,7 @@ Q4 popular & 3,945 & 65.3 & 70.8\% \\
 Overall & 6,040 & 100.0 & 63.8\% \\
 \bottomrule
 \end{tabular}
-\caption{Raw TIGER beam coverage by popularity quartile on ML-1M with beam width 100. The raw gap is affected by unequal exposure counts across quartiles, so Table~\ref{tab:exposure-normalized} reports a normalized variant. Both CQG-Single and CQG-AR can score every encoded item by design.}
+\caption{TIGER target support by held-out target popularity on ML-1M with beam width 100. Rows are user-weighted hit rates; therefore their weighted aggregate is 63.8\%. They are not equal-size catalog-item coverage estimates.}
 \label{tab:reachability}
 \end{table}
 
@@ -238,7 +231,7 @@ Overall & 6,040 & 100.0 & 63.8\% \\
 \small
 \begin{tabular}{llrr}
 \toprule
-Dataset & Quartile & Norm. Reachability & Std. \\
+Dataset & Target quartile & Matched support & Std. \\
 \midrule
 ML-1M & Q1 rare & 25.3\% & 0.0\% \\
 ML-1M & Q2 & 46.2\% & 2.9\% \\
@@ -251,22 +244,22 @@ Sports & Q3 & 4.64\% & 1.32\% \\
 Sports & Q4 popular & 15.46\% & 2.31\% \\
 \bottomrule
 \end{tabular}
-\caption{Exposure-normalized beam reachability by popularity quartile. We repeatedly subsample the same number of target items per quartile and report mean and standard deviation over 200 trials. The popularity-dependent support gap persists after normalization.}
+\caption{Matched-target beam support by popularity quartile. We repeatedly subsample the same number of distinct test targets per quartile and report mean and standard deviation over 200 trials. This controls target-set size but remains a target-conditioned metric.}
 \label{tab:exposure-normalized}
 \end{table}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{Figures/fig3_reachability.pdf}
-\caption{Raw beam coverage is skewed across popularity quartiles. The same qualitative skew remains under the exposure-normalized analysis in Table~\ref{tab:exposure-normalized}.}
+\caption{Target-conditioned beam support is skewed across popularity quartiles. The same qualitative skew remains under the matched-target analysis in Table~\ref{tab:exposure-normalized}.}
 \label{fig:reachability}
 \end{figure}
 
-This result separates two failure modes. Although 99.4\% of ML-1M items receive unique codes, 36.2\% are never found by the canonical seed-42 checkpoint at beam width 100; the bottleneck is therefore not merely token collision or codebook capacity. We reserve conclusions about how this coverage changes with beam width for the protocol-matched, popularity-stratified sweep described in the experiment plan, rather than mixing outputs from different checkpoints.
+This result separates code assignment from target support: 99.4\% unique codes do not imply that every held-out target enters a finite beam. It does not, by itself, show that 36.2\% of catalog items are never retrieved. That stronger output-set claim requires the matched union-of-top-$K$ catalog-coverage measurement reported separately.
 
 \subsection{Crossover Phenomenon}
 
-The reachability ceiling produces a depth-dependent crossover. Table~\ref{tab:crossover} reports selected per-quartile Recall@K values on ML-1M for TIGER and CQG-Single, while Figure~\ref{fig:crossover} shows the complete depth curves. At R@10, TIGER is stronger on the two rarest quartiles, including a 30\% relative advantage on Q1. This confirms that autoregressive SID decoding can be precise at very shallow K. At deeper K, however, CQG-Single overtakes on Q2--Q4 and matches Q1 at R@90. The Q1 R@90 tie equals the 24.0\% Q1 reachability ceiling, indicating that TIGER has exhausted its reachable rare items. CQG-AR is reported separately in the overall comparison because its current three-seed runs use the full-user evaluator rather than this seed-42 paired diagnostic.
+Table~\ref{tab:crossover} reports selected per-quartile Recall@$K$ values on ML-1M for TIGER and CQG-Single, while Figure~\ref{fig:crossover} shows the complete depth curves. TIGER is stronger on the two rarest quartiles at R@10, whereas CQG-Single overtakes on Q2--Q4 deeper in the list. On Q1 the two methods happen to tie at R@90. Because Recall@$K$ is a per-user hit rate whereas catalog coverage is a union over output items, we do not interpret this numerical tie as equality with an item-level ceiling. CQG-AR is reported separately in the overall comparison because its current runs use the full-user evaluator rather than this earlier seed-42 paired diagnostic.
 
 \begin{table*}[t]
 \centering
@@ -341,6 +334,28 @@ EAGER~\citep{wang2024eager} & 0.0836 & 0.0525 \\
 \end{tabular}
 \caption{Published and reproduced SID results on Amazon Beauty. Our row is a three-seed mean and sample standard deviation under our evaluator. Published rows are transcribed from their respective papers and are not directly comparable because tokenizers, item features, model architectures, and preprocessing protocols differ. The table documents the implementation gap rather than claiming a controlled ranking among methods.}
 \label{tab:published-sid}
+\end{table}
+
+\paragraph{Output-set coverage of the closer SID recipe.}
+We also decode the full 22,363-user Beauty test set from each T5/RQ-VAE checkpoint with beam width 100 and map valid generated codes back to catalog items. Across seeds, 99.48\% of generated sequences are valid SIDs, but the union covers only $44.0\%\pm13.7\%$ of the 12,101-item catalog. The popularity gradient is consistent despite substantial seed variance: mean coverage rises from $14.0\%\pm7.6\%$ in Q1 to $88.7\%\pm13.0\%$ in Q4 (Table~\ref{tab:faithful-coverage}). Because this reproduction remains below published TIGER accuracy, it is evidence that the pattern is not unique to our hierarchical-$k$-means code assignment, but it is not a substitute for measuring the authors' published checkpoint.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Catalog group & Coverage@100 & Std. \\
+\midrule
+Q1 rare & 14.0\% & 7.6\% \\
+Q2 & 26.1\% & 13.8\% \\
+Q3 & 47.4\% & 20.3\% \\
+Q4 popular & 88.7\% & 13.0\% \\
+\midrule
+Overall & 44.0\% & 13.7\% \\
+\bottomrule
+\end{tabular}
+\caption{Empirical union-of-top-100 catalog coverage for the closer T5/RQ-VAE Beauty reproduction, averaged over decoder seeds 42--44. Each quartile contains approximately one quarter of the catalog.}
+\label{tab:faithful-coverage}
 \end{table}
 
 \subsection{Cross-Dataset Continuous--Discrete Comparison}
@@ -420,6 +435,8 @@ SASRec full-rank & 0.2797 & 0.0390 \\
 
 Table~\ref{tab:loss} compares objectives on frozen embeddings using the corrected leave-one-out evaluator, which appends the validation item to the test history. Full-catalog CE produces the strongest Recall@10, while MSE and in-batch InfoNCE provide weaker catalog discrimination; Figure~\ref{fig:ce_mse} summarizes the contrast. The temperature ablation in Appendix~\ref{app:temperature} preserves this ordering.
 
+This objective effect is a competing explanation for any continuous--SID accuracy gap: full-catalog CE exposes each continuous query to every item at each update, whereas the SID decoder receives token-level supervision over code positions. CQG-AR matches the broad autoregressive architecture but does not by itself match catalog visibility. We therefore report a sampled-CE control with a fixed 256-negative budget and avoid attributing an accuracy difference solely to the output interface. The interface claim supported without this assumption is narrower: CQG-Single and CQG-AR eliminate discrete code lookup and make every encoded item scoreable, while their finite top-$K$ coverage and accuracy remain empirical quantities.
+
 \begin{table}[t]
 \centering
 \small
@@ -468,21 +485,21 @@ The full-catalog CE used by CQG-Single and CQG-AR requires scoring every item du
 \section{Discussion}
 
 \textbf{What the ceiling means.}
-The reachability ceiling is not the same as poor model accuracy. It is a support constraint: items outside the beam's explored code paths have zero chance of being retrieved, no matter how good a downstream reranker is. This is especially problematic in retrieve-and-rerank systems because missing candidates cannot be recovered later.
+The reachability ceiling is not the same as poor model accuracy. For a fixed trained model and beam budget, a target outside the produced candidate set has zero chance of being recovered by a downstream reranker. This is a property of the realized model--search combination, not proof that the target is unrepresentable by every stronger SID implementation.
 
 \textbf{Why the crossover matters.}
-The Crossover Phenomenon explains why SID methods can look strong under shallow top-K metrics while still being structurally limited. At R@10, concentrated autoregressive probability can help. At deeper K or in coverage-oriented evaluation, finite beam support can become a bottleneck. CQG-Single and CQG-AR both keep every encoded item scoreable, but their query quality depends on embedding alignment. CQG-Single achieves the strongest current ML-1M R@10, whereas CQG-AR approximately matches TIGER-style accuracy with lower seed variance; this indicates that continuous output can preserve autoregressive modeling without requiring SID tokens, but autoregressive refinement is not automatically superior to one-step generation.
+The Crossover Phenomenon describes a depth-dependent empirical pattern rather than a universal ranking theorem. At R@10, concentrated autoregressive probability can help; deeper in the list, finite beam support can become a bottleneck in the evaluated systems. CQG-Single and CQG-AR both keep every encoded item scoreable, but their query quality depends on embedding alignment. CQG-Single achieves the strongest current ML-1M R@10, whereas CQG-AR approximately matches TIGER-style accuracy with lower seed variance; this indicates that continuous output can preserve autoregressive modeling without requiring SID tokens, but autoregressive refinement is not automatically superior to one-step generation.
 
 \textbf{Practical implications.}
 For static catalogs with strong top-10 precision requirements, SID methods remain competitive. Continuous-query retrieval offers a simpler score-and-index interface and can coexist with existing rankers as a recall stage. Whether this interface yields better latency, memory use, or cold-item accuracy at production scale remains to be tested.
 
 \section{Limitations}
 
-Our study has several limitations. Exposure-normalized subsampling reduces the direct popularity-exposure confound but remains observational rather than a causal intervention on user demand. The strongest crossover analysis is on ML-1M; a protocol-matched Amazon crossover remains necessary for full cross-dataset confirmation. Our TIGER-style comparison uses hierarchical k-means over SASRec embeddings, and our closer T5/RQ-VAE recipe still fails to reproduce the published Beauty R@10, as documented in Table~\ref{tab:published-sid} and Appendix~\ref{app:tiger_recipe}. The current CQG-AR residual steps share one next-item target and provide only limited improvement over its $L=1$ boundary. Both continuous methods use full-catalog softmax in their strongest configurations, which needs sampling or ANN-negative approximations at million-item scale. Finally, CQG-Single and CQG-AR inherit preference-relevant errors in the frozen item space.
+Our study has several limitations. Matched-target subsampling reduces unequal target counts across popularity groups but remains observational rather than a causal intervention on user demand. The strongest completed crossover analysis is on ML-1M; a protocol-matched Amazon crossover is required for full cross-dataset confirmation. Our TIGER-style comparison uses hierarchical k-means over SASRec embeddings, and our closer T5/RQ-VAE recipe still fails to reproduce the published Beauty R@10, as documented in Table~\ref{tab:published-sid} and Appendix~\ref{app:tiger_recipe}. Thus, its absolute effect sizes must not be generalized to a fully reproduced TIGER checkpoint. The current CQG-AR residual steps share one next-item target and provide only limited improvement over its $L=1$ boundary. Both continuous methods use full-catalog softmax in their strongest configurations, which needs sampling or ANN-negative approximations at million-item scale. Finally, CQG-Single and CQG-AR inherit preference-relevant errors in the frozen item space.
 
 \section{Conclusion}
 
-This paper studies the Beam Search Reachability Ceiling as a practical bottleneck in SID-based generative recommendation. Our evidence shows that beam coverage is incomplete and remains popularity-skewed after exposure-normalized subsampling, and that a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Single demonstrates the effectiveness of a minimal one-step continuous query, while CQG-AR shows that an autoregressive decoder can replace discrete SID tokens with continuous residual outputs and retain competitive accuracy. Together they separate the value of autoregression from the constraints of a discrete output vocabulary. These findings challenge the assumption that Semantic IDs are necessary infrastructure for generative recommendation and motivate protocol-matched evaluation of continuous and discrete retrieval interfaces.
+This paper studies finite-beam output support as a practical bottleneck in SID-based generative recommendation. In our evaluated models, target-conditioned support and empirical output coverage are incomplete and popularity-skewed, and a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Single demonstrates a minimal one-step continuous query, while CQG-AR shows that an autoregressive decoder can replace discrete SID tokens with continuous residual outputs and retain competitive accuracy. Together they separate the value of autoregression from the constraints of a discrete output vocabulary. The results motivate protocol-matched evaluation of continuous and discrete retrieval interfaces, including accuracy, target support, and matched-budget catalog coverage.
 
 \bibliography{references}
 
@@ -495,8 +512,6 @@ This paper studies the Beam Search Reachability Ceiling as a practical bottlenec
 \label{app:auto-completed}
 % BEGIN AUTO_RESULTS
 We report completed, protocol-matched diagnostics on the two Amazon datasets used in the main paper. These results assess the robustness of our TIGER-style implementation; they are not presented as reproductions of the published TIGER architecture.
-Rows are added only after a result JSON is present on disk; running jobs are not reported as final results.
-
 \begin{table}[!htbp]
 \centering
 \small
@@ -551,23 +566,29 @@ All datasets are converted into chronological user sequences. For each user, we 
 \subsection{Evaluation Metrics}
 \label{app:metrics}
 
-For a user $u$ with held-out target item $i_u^\star$, Recall@$K$ is one if $i_u^\star$ appears in the top-$K$ list and zero otherwise. NDCG@$K$ discounts a hit by the target rank. For SID models, we additionally report the beam-search reachable rate:
+For a user $u$ with held-out target item $i_u^\star$, Recall@$K$ is one if $i_u^\star$ appears in the top-$K$ list and zero otherwise. NDCG@$K$ discounts a hit by the target rank. We distinguish two output-based support metrics. The SID target-support rate is
 \[
-\mathrm{Reachable@B} =
-\frac{1}{|\mathcal{I}|}
-\sum_{i\in\mathcal{I}}
-\mathbf{1}\{i\in \cup_{u\in\mathcal{U}} \mathrm{Beam}_B(u)\},
+\mathrm{TargetSupport@B} =
+\frac{1}{|\mathcal{U}|}
+\sum_{u\in\mathcal{U}}
+\mathbf{1}\{i_u^\star\in \mathrm{Beam}_B(u)\},
 \]
-where $\mathrm{Beam}_B(u)$ is the set of items decoded by beam search with beam width $B$ for user $u$. This metric measures support coverage of the inference procedure, not ranking accuracy conditional on support.
-
-For exposure-normalized reachability, we first group target items by training-frequency quartile. Let $\mathcal{Q}_q$ be the items in quartile $q$ and let $m$ be the common sample size. For each trial, we uniformly sample $S_q\subseteq\mathcal{Q}_q$ with $|S_q|=m$ and compute:
+where $\mathrm{Beam}_B(u)$ is the unfiltered set of items decoded with beam width $B$. This is a per-user target-conditioned quantity and is closely related to Recall@$B$; it must not be interpreted as catalog coverage. For any method $M$, empirical union coverage at a matched output budget $K$ is
 \[
-\mathrm{NormReachable}_q =
+\mathrm{CatalogCoverage@K}(M)=
+\frac{\left|\bigcup_{u\in\mathcal U}\mathrm{TopK}_M(u)\right|}
+{|\mathcal I|}.
+\]
+We report this same output-set quantity for TIGER, CQG-Single, and CQG-AR. Catalog-wide scoreability of a dense interface is a separate property and does not imply 100\% CatalogCoverage@$K$.
+
+For the matched-target diagnostic, we first group distinct test-target items by training-frequency quartile. Let $\mathcal{Q}^{\mathrm{test}}_q$ be the test targets in quartile $q$ and let $m=\min_q|\mathcal{Q}^{\mathrm{test}}_q|$. For each trial, we uniformly sample $S_q\subseteq\mathcal{Q}^{\mathrm{test}}_q$ with $|S_q|=m$ and compute:
+\[
+\mathrm{MatchedTargetSupport}_q =
 \frac{1}{m}
 \sum_{i\in S_q}
-\mathbf{1}\{i\in \cup_{u\in\mathcal{U}} \mathrm{Beam}_B(u)\}.
+\mathbf{1}\{i\text{ is supported for its associated test instance}\}.
 \]
-We report the mean and standard deviation over 200 trials. This controls the direct mechanical advantage that larger quartiles have in raw union-of-beams coverage.
+We report the mean and standard deviation over 200 trials. This equalizes the number of distinct sampled targets, but it is not a substitute for the matched CatalogCoverage@$K$ measurement above.
 
 \section{Model and Training Details}
 \label{app:training}
@@ -592,7 +613,7 @@ TIGER-style SID decoder & 384 & 4 & 6 & 1e-3 & 256 & 50K steps & Autoregressive 
 TIGER T5/RQ-VAE reproduction & -- & -- & -- & 1e-4 & 256 & 200 epochs & Autoregressive CE over SID tokens \\
 \bottomrule
 \end{tabular}
-\caption{Training hyperparameters used in the current experiments. Sequence length is 50 for ML-1M and LastFM, and 20 for Beauty, Sports, and Electronics.}
+\caption{Training hyperparameters for the three datasets reported in the paper. Sequence length is 50 for ML-1M and 20 for Beauty and Sports.}
 \label{tab:hparams}
 \end{table}
 
@@ -628,7 +649,7 @@ The CE variant scores the full frozen catalog:
 \frac{\exp(q_u^\top e_{i^\star}/\tau)}
 {\sum_{j=1}^{N}\exp(q_u^\top e_j/\tau)}.
 \]
-All variants retrieve by dense similarity at inference time, so all encoded items remain reachable.
+All variants can score every encoded item by dense similarity at inference time. Their empirical CatalogCoverage@$K$ is nevertheless measured from the union of finite top-$K$ outputs.
 
 \section{SID Construction and Decoder Training}
 \label{app:sid}
