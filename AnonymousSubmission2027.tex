@@ -186,7 +186,7 @@ Beauty & 22,363 & 12,102 & 198K & 0.07\% \\
 Sports & 21,519 & 10,694 & $\sim$178K & 0.08\% \\
 \bottomrule
 \end{tabular}
-\caption{Dataset statistics. The processed Sports split differs from the standard 5-core split used in several published SID studies, so its results are treated as within-paper diagnostics.}
+\caption{Dataset statistics. Density is defined as $|\mathcal{R}|/(|\mathcal{U}||\mathcal{I}|)$, where $\mathcal{R}$ is the set of observed interactions, $\mathcal{U}$ the users, and $\mathcal{I}$ the items. The processed Sports split differs from the standard 5-core split used in several published SID studies, so its results are treated as within-paper diagnostics.}
 \label{tab:data}
 \end{table}
 
@@ -296,7 +296,8 @@ Table~\ref{tab:ml1m} compares the two continuous methods and SID baselines on ML
 
 \begin{table}[t]
 \centering
-\small
+\scriptsize
+\setlength{\tabcolsep}{2.6pt}
 \begin{tabular}{lrrr}
 \toprule
 Method & Params & R@10 & NDCG@10 \\
@@ -316,10 +317,11 @@ Table~\ref{tab:ar-depth} varies CQG-AR depth while holding the seed, architectur
 
 \begin{table}[t]
 \centering
-\small
+\scriptsize
+\setlength{\tabcolsep}{3.2pt}
 \begin{tabular}{lrrr}
 \toprule
-CQG-AR depth & R@10 & NDCG@10 & R@100 \\
+Depth & R@10 & NDCG@10 & R@100 \\
 \midrule
 $L=1$ & 0.2924 & \textbf{0.1719} & 0.6550 \\
 $L=2$ & 0.2909 & 0.1688 & 0.6525 \\
