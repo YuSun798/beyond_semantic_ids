@@ -34,6 +34,13 @@ Generative recommendation (GR) has recently emerged as a powerful paradigm, retr
 
 \section{Introduction}
 
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.8\textwidth]{Figures/fig1_1_pipeline.pdf}
+\caption{SID pipeline versus CQG-Rec pipeline. SID systems first tokenize items with a discrete tokenizer such as RQ-VAE or hierarchical k-means, then use autoregressive decoding and beam search before mapping generated codes back to items. CQG-Rec generates a continuous query and retrieves directly in a frozen item embedding space, making all encoded items scoreable by dense retrieval or ANN.}
+\label{fig:pipeline}
+\end{figure*}
+
 Generative recommendation retrieves items by generating symbolic identifiers rather than directly scoring the entire catalog. The most influential instance of this paradigm is Semantic-ID (SID) recommendation: items are first quantized into discrete code sequences, and an autoregressive model decodes those sequences conditioned on user history \citep{rajput2023tiger,zheng2024letter,wang2024eager}. This formulation is attractive because it converts recommendation into a familiar sequence-generation problem. It also supports constrained decoding through a trie, ensuring that the generated token sequence corresponds to a valid item.
 
 This marks a substantial architectural shift from conventional sequential recommenders. Models such as SASRec encode user histories, user features, and item representations, then score candidate items discriminatively \citep{kang2018sasrec}. In SID-based generative recommendation, the output interface is instead moved into a language-model-style generator: a decoder is trained to emit the SID sequence of the next item. Larger pretrained language models can provide useful generic knowledge and may benefit from scaling behavior as model and data size increase \citep{kaplan2020scaling}, but SID-based GR still requires three additional system components. First, items must be compressed into a finite hierarchical identifier space, using vector-quantization methods such as VQ-VAE \citep{vandenoord2017vqvae}, residual quantization as in RQ-VAE \citep{lee2022rqvae}, residual or balanced hierarchical clustering, or industrial generative retrieval designs such as OneRec \citep{deng2025onerec}. Second, the generator must be trained either by adapting a pretrained LLM through continued pretraining and supervised fine-tuning, where SID tokens become a new vocabulary that must be aligned with the LLM's semantic space, or by training a smaller decoder-only model from scratch, which sacrifices pretrained knowledge for a cleaner SID prediction objective. Third, inference decodes SID sequences from user features and sequential history, then maps the generated codes to item IDs or expands them through item-to-item retrieval. (Figure~\ref{fig:pipeline})
@@ -58,6 +65,8 @@ Our contributions are:
 
 \section{Related Work}
 
+
+
 \textbf{Semantic-ID generative recommendation.}
 TIGER \citep{rajput2023tiger} introduced hierarchical Semantic IDs using residual vector quantization and autoregressive decoding. Subsequent work improves code learning, alignment, and model design: LETTER integrates collaborative semantics \citep{zheng2024letter}, EAGER introduces behavior-semantic collaboration \citep{wang2024eager}, IDGenRec studies textual IDs \citep{tan2024idgenrec}, DIGER proposes differentiable indexing \citep{fu2026diger}, and UniGRec explores soft identifiers \citep{li2026unigrec}. These methods differ in how identifiers are constructed and aligned, but they retain a discrete vocabulary interface and typically require constrained autoregressive decoding. Our work targets a shared property of this family: the reachability ceiling induced by beam search over a structured identifier space.
 
@@ -75,6 +84,8 @@ Sequential recommendation models such as GRU4Rec \citep{hidasi2016gru4rec}, SASR
 
 \textbf{Scope of novelty.}
 Dense retrieval and its catalog-wide scoring property are established techniques; we do not claim either as a new retrieval architecture. Our contribution is the controlled use of a frozen-space dense retriever to isolate the discrete inference interface, followed by item-level and popularity-stratified measurements of SID beam coverage and its depth-dependent interaction with Recall@$K$. This experimental design separates code assignment from code retrieval and makes the observed ceiling testable without attributing gains to a larger encoder or a more elaborate ranker.
+
+
 
 \section{Method}
 
@@ -163,7 +174,6 @@ Figure~\ref{fig:pipeline} compares the inference mechanisms. SID retrieval requi
 \caption{Discrete SID retrieval and the two continuous-query methods. SID systems tokenize items and autoregressively expand discrete code paths. CQG-Single generates one continuous query, while CQG-AR autoregressively refines continuous residuals before ANN retrieval.}
 \label{fig:pipeline}
 \end{figure*}
-
 \section{Experiments}
 
 \subsection{Experimental Setup}
@@ -485,6 +495,7 @@ This paper studies the Beam Search Reachability Ceiling as a practical bottlenec
 \label{app:auto-completed}
 % BEGIN AUTO_RESULTS
 We report completed, protocol-matched diagnostics on the two Amazon datasets used in the main paper. These results assess the robustness of our TIGER-style implementation; they are not presented as reproductions of the published TIGER architecture.
+Rows are added only after a result JSON is present on disk; running jobs are not reported as final results.
 
 \begin{table}[!htbp]
 \centering
