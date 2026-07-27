@@ -156,9 +156,9 @@ def figure3():
             linewidth=0,
             label="CQG-Single advantage",
         )
-        ax.plot(ks, single, "-o", color=blue, lw=2.0, ms=3.8, label="CQG-Single")
-        ax.plot(ks, ar, "-^", color=green, lw=2.0, ms=4.0, label="CQG-AR")
-        ax.plot(ks, tiger, "-s", color=gold, lw=2.0, ms=3.8, label="TIGER")
+        ax.plot(ks, single, "-o", color=blue, lw=1.15, ms=3.2, label="CQG-Single")
+        ax.plot(ks, ar, "-^", color=green, lw=1.15, ms=3.3, label="CQG-AR")
+        ax.plot(ks, tiger, "-s", color=gold, lw=1.15, ms=3.2, label="TIGER")
         ax.axhline(
             limit,
             color=limit_color,

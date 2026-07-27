@@ -268,10 +268,11 @@ We use leave-one-out evaluation: the last item is held out for testing, the seco
 \includegraphics[width=\textwidth]{Figures/fig2_crossover.pdf}
 \caption{Measured per-quartile Recall@$K$ curves on ML-1M, seed 42.
 CQG-Single and CQG-AR are shown separately; light-blue shading highlights
-intervals in which CQG-Single exceeds TIGER. Vermillion dashed lines mark the
-quartile-specific TIGER finite-beam reachability limits at $B=200$, and the
-light vermillion regions above them are unreachable for the evaluated
-model--beam pair. The Q1 annotation marks the exact measured
+intervals in which CQG-Single exceeds TIGER. Vermillion dashed lines show
+TIGER's user-weighted TargetSupport@200 within each quartile, which upper-bounds
+Recall@$K$ for any ranking restricted to the same decoded beam; the light
+vermillion regions above them are unreachable for the evaluated model--beam
+pair. The Q1 annotation marks the exact measured
 CQG-Single--TIGER tie at $K=40$ (Recall $=0.1658$). Every
 curve point uses saved per-user output at
 $K\in\{10,20,\ldots,100,120,150\}$; no metric point is interpolated. All
@@ -317,6 +318,9 @@ every encoded item remains scoreable, although its finite Top-$K$ Recall is
 still determined by query quality.
 
 Table~\ref{tab:target-support-comparison} provides the matched finite-output comparison. TargetInOutput@100 is user weighted. Q1--Q4 first compute the hit rate of each distinct test-target item and then average items equally within training-frequency quartiles. TargetItemSupport@200 is the fraction of distinct held-out target items retrieved for at least one associated test instance. Under these definitions, both continuous methods support more users, every popularity quartile, and more distinct target items than the evaluated TIGER checkpoint. The earlier TIGER-only matched-resampling diagnostic is retained in Appendix~\ref{app:matched-target}. Union-of-output catalog coverage is reported separately in Table~\ref{tab:matched-coverage}.
+Figure~\ref{fig:reachability} is user weighted, whereas the Q1--Q4 columns in
+Table~\ref{tab:target-support-comparison} average distinct target items equally
+within the same quartile mapping.
 
 \begin{table*}[!t]
 \centering
@@ -435,17 +439,17 @@ Dataset &
 \midrule
 ML-1M & 70.1\% & 95.3\% & 69.7\% & 97.6\% & 68.7\% & 97.6\% \\
 Beauty & 75.2\% & 98.1\% & 89.5\% & 99.9\% & 87.9\% & 99.8\% \\
-Sports & -- & -- & -- & -- & -- & -- \\
+Sports & -- & -- & -- & -- & 71.8\% & 98.4\% \\
 \bottomrule
 \end{tabular}
 \caption{Matched Catalog Coverage: empirical union-of-Top-$K$ catalog coverage
 for seed 42. ML-1M and
 Beauty use matched output budgets, user sets, and history filtering across all
 three methods; denominators exclude padding and contain 3,416 and 12,101
-items, respectively. Sports is included to make the cross-dataset reporting
-scope explicit, but matched coverage cannot be reconstructed from the saved
-outputs: its TIGER run retained aggregate metrics for sampled users without
-ranked item lists, and its CQG-Single run retained aggregate metrics only.
+items, respectively. For Sports, the completed full-user CQG-AR output gives
+71.8\% and 98.4\% coverage; the corresponding TIGER and CQG-Single cells remain
+blank until their queued full-user ranked lists complete, so the Sports row is
+not yet a three-method matched comparison.
 This output-union metric is distinct from per-user TargetSupport and
 catalog-wide scoreability.}
 \label{tab:matched-coverage}
@@ -567,7 +571,7 @@ SID results.}
 \end{table}
 
 \paragraph{Preliminary Sports multimodal diagnostic.}
-We additionally ran a single-seed diagnostic in which CQG-Single and the TIGER-style decoder share item embeddings formed from collaborative features and ImageNet-pretrained ResNet-18 image features. Images were available for only 5,268 of 10,693 non-padding catalog items; items without an image use the collaborative component with a zero image feature. Because image availability is incomplete and no multi-seed estimate is available, this experiment is preliminary and is not used to support the main claims.
+We additionally ran a single-seed diagnostic in which CQG-Single, CQG-AR, and the TIGER-style decoder share item embeddings formed from collaborative features and ImageNet-pretrained ResNet-18 image features. Images were available for only 5,268 of 10,693 non-padding catalog items; items without an image use the collaborative component with a zero image feature. Because image availability is incomplete and no multi-seed estimate is available, this experiment is preliminary and is not used to support the main claims.
 \begin{table}[H]
 \centering
 \small
@@ -576,10 +580,14 @@ We additionally ran a single-seed diagnostic in which CQG-Single and the TIGER-s
 Method & R@10 & NDCG@10 & R@90 & TargetSupport@100 \\
 \midrule
 CQG-Single (multimodal, seed 42) & 0.0326 & 0.0174 & 0.1154 & -- \\
+CQG-AR (multimodal, seed 42) & 0.0296 & 0.0161 & 0.1087 & 11.62\% \\
 TIGER-style SID (multimodal, seed 42) & 0.0254 & 0.0137 & 0.0972 & 10.06\% \\
 \bottomrule
 \end{tabular}
-\caption{Preliminary single-seed Sports multimodal diagnostic. CQG-Single and the TIGER-style SID model use the same fused item space; the result is not directly comparable to a full-coverage multimodal benchmark because only 49.3\% of catalog items have images.}
+\caption{Preliminary single-seed Sports multimodal diagnostic. CQG-Single,
+CQG-AR, and the TIGER-style SID model use the same fused item space; the result
+is not directly comparable to a full-coverage multimodal benchmark because only
+49.3\% of catalog items have images.}
 \label{tab:auto-sports-mm}
 \end{table}
 
@@ -591,10 +599,11 @@ TIGER-style SID (multimodal, seed 42) & 0.0254 & 0.0137 & 0.0972 & 10.06\% \\
 \subsection{Legacy Retrieve-and-Rerank Diagnostics}
 \label{app:legacy-mse}
 
-We evaluate a matched 100-candidate retrieve-and-rerank pipeline using a legacy
-MSE-trained CQG-Single checkpoint. Across ML-1M, Beauty, and Sports,
+We evaluate a matched 100-candidate retrieve-and-rerank pipeline using legacy
+MSE-trained continuous-query checkpoints. Across ML-1M, Beauty, and Sports,
 CQG-Single followed by SASRec reranking reaches 97.7--102\% of full-rank
-SASRec Recall@10 (Table~\ref{tab:cross}). Table~\ref{tab:hierarchy} further
+SASRec Recall@10; the completed CQG-AR controls on Beauty and Sports are also
+reported in Table~\ref{tab:cross}. Table~\ref{tab:hierarchy} further
 compares the learned retriever with random, last-item kNN, and mean-of-five
 kNN baselines under the same SASRec reranker. These candidate-generation
 diagnostics are separate from the CE-trained standalone results in
@@ -611,18 +620,24 @@ Method & ML-1M & Beauty & Sports \\
 SASRec & 0.2797 & 0.0558 & 0.0390 \\
 CQG-Single MSE standalone & 0.2425 & 0.0524 & 0.0307 \\
 CQG-Single MSE + reranker & \textbf{0.2801} & \textbf{0.0569} & 0.0381 \\
+CQG-AR MSE standalone (seed 42) & 0.2414 & 0.0466 & 0.0294 \\
+CQG-AR MSE + reranker (seed 42) & -- & 0.0486 & 0.0378 \\
 TIGER candidates + SASRec & 0.2864 & -- & -- \\
 \midrule
 \multicolumn{4}{l}{\textit{NDCG@10}} \\
 SASRec & 0.1535 & 0.0296 & 0.0197 \\
 CQG-Single MSE standalone & 0.1424 & 0.0266 & 0.0150 \\
 CQG-Single MSE + reranker & \textbf{0.1554} & \textbf{0.0308} & 0.0194 \\
+CQG-AR MSE standalone (seed 42) & 0.1366 & 0.0276 & 0.0160 \\
+CQG-AR MSE + reranker (seed 42) & -- & 0.0265 & 0.0194 \\
 TIGER candidates + SASRec & 0.1571 & -- & -- \\
 \bottomrule
 \end{tabular}
 \caption{Legacy MSE candidate-generation diagnostic with a matched
-100-candidate budget. The TIGER reranking control is available on ML-1M only.
-These rows are separate from the CE-trained standalone models.}
+100-candidate budget. The TIGER reranking control is available on ML-1M only;
+the CQG-AR ML-1M reranking job is pending correction of a checkpoint
+sequence-length mismatch. These rows are separate from the CE-trained standalone
+models.}
 \label{tab:cross}
 \end{table}
 
@@ -637,11 +652,13 @@ Random & 0.0252 & 0.0037 \\
 Last-item kNN & 0.2349 & 0.0311 \\
 Mean-of-5 kNN & 0.2545 & 0.0310 \\
 CQG-Single MSE + SASRec & \textbf{0.2801} & \textbf{0.0381} \\
+CQG-AR MSE + SASRec & -- & 0.0378 \\
 SASRec full-rank & 0.2797 & 0.0390 \\
 \bottomrule
 \end{tabular}
 \caption{Legacy MSE retrieval-quality hierarchy. All methods except SASRec
-full-rank use SASRec reranking over top-100 candidates.}
+full-rank use SASRec reranking over top-100 candidates. The CQG-AR ML-1M cell
+awaits the corrected reranking run.}
 \label{tab:hierarchy}
 \end{table}
 
@@ -669,20 +686,22 @@ Seed &
 45 ($B=200$) & 0.3028 & 0.1768 & 0.3103 & 0.1830 & 0.3010 & 0.1755 \\
 46 ($B=200$) & 0.3045 & 0.1781 & 0.3139 & 0.1849 & 0.2969 & 0.1739 \\
 47 ($B=200$) & 0.2995 & 0.1728 & 0.3089 & 0.1832 & 0.2970 & 0.1734 \\
+48 (TIGER pending) & -- & -- & 0.3053 & 0.1804 & 0.2940 & 0.1738 \\
 \midrule
-Mean $\pm$ SD &
+Mean $\pm$ SD (42--47) &
 $0.2990{\pm}0.0076$ & $0.1738{\pm}0.0050$ &
 $\mathbf{0.3112{\pm}0.0046}$ & $\mathbf{0.1825{\pm}0.0047}$ &
 $0.2982{\pm}0.0031$ & $0.1735{\pm}0.0017$ \\
 \bottomrule
 \end{tabular}
-\caption{Interim ML-1M seed expansion over seeds 42--47, evaluated on all
-6,040 users. CQG-Single and CQG-AR use a common dense full-catalog protocol
-across all six seeds. TIGER seeds 42--44 use beam 100, whereas seeds 45--47
-currently have full-user beam-200 evaluations; its mean is therefore a
-mixed-beam diagnostic, not the final protocol-matched estimate. SD denotes
-sample standard deviation across six training seeds. Figure~\ref{fig:crossover}
-remains a seed-42 matched-budget illustration.}
+\caption{Interim ML-1M seed expansion. Seeds 42--47 are evaluated on all
+6,040 users and summarized in the final row; CQG-Single and CQG-AR seed 48 are
+also complete, while TIGER seed 48 is still running and is excluded from that
+summary. CQG-Single and CQG-AR use a common dense full-catalog protocol.
+TIGER seeds 42--44 use beam 100, whereas seeds 45--47 currently have full-user
+beam-200 evaluations; its mean is therefore a mixed-beam diagnostic, not the
+final protocol-matched estimate. SD denotes sample standard deviation.
+Figure~\ref{fig:crossover} remains a seed-42 matched-budget illustration.}
 \label{tab:seed-expansion-preview}
 \end{table}
 
@@ -1151,11 +1170,14 @@ SASRec BPR & 0.2797 & 100.0\% \\
 CQG-Single full-catalog CE & \textbf{0.3114} & 111.3\% \\
 CQG-Single MSE & 0.2425 & 86.7\% \\
 CQG-Single InfoNCE & 0.2386 & 85.3\% \\
+CQG-AR full-catalog CE & 0.2982 & 106.6\% \\
+CQG-AR MSE & 0.2424 & 86.7\% \\
+CQG-AR InfoNCE & 0.2324 & 83.1\% \\
 \bottomrule
 \end{tabular}
-\caption{Frozen-item objective landscape on ML-1M. CE and MSE are
-three-seed means under the corrected test-history protocol; InfoNCE is an
-auxiliary diagnostic.}
+\caption{Frozen-item objective landscape on ML-1M. CQG-Single CE/MSE and all
+CQG-AR rows are three-seed means under the corrected test-history protocol;
+CQG-Single InfoNCE is an auxiliary diagnostic.}
 \label{tab:loss}
 \end{table}
 
@@ -1179,13 +1201,19 @@ only as a separate diagnostic, not as a controlled loss-only comparison.}
 \toprule
 Objective & Test R@10 \\
 \midrule
-CE, $\tau=0.07$ & 0.3114 \\
-CE, $\tau=0.10$ & 0.3070 \\
-CE, $\tau=0.20$ & 0.2846 \\
-MSE & 0.2425 \\
+CQG-Single CE, $\tau=0.07$ & 0.3114 \\
+CQG-Single CE, $\tau=0.10$ & 0.3070 \\
+CQG-Single CE, $\tau=0.20$ & 0.2846 \\
+CQG-Single MSE & 0.2425 \\
+CQG-AR CE, $\tau=0.07$ & 0.2972 \\
+CQG-AR CE, $\tau=0.10$ & 0.2886 \\
+CQG-AR CE, $\tau=0.20$ & 0.2725 \\
 \bottomrule
 \end{tabular}
-\caption{Temperature ablation on ML-1M under the corrected test-history protocol. Lower temperatures improve shallow retrieval in the tested range.}
+\caption{Temperature ablation on ML-1M under the corrected test-history
+protocol. CQG-Single values are three-seed means; CQG-AR values are aligned
+seed-42 controls. Lower temperatures improve shallow retrieval in the tested
+range.}
 \label{tab:temperature}
 \end{table}
 
