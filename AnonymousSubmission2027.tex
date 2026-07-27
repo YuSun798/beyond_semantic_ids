@@ -338,10 +338,14 @@ Table~\ref{tab:primary-comparison} provides the primary cross-dataset
 comparison, while Figure~\ref{fig:crossover} examines retrieval depth and
 target popularity on ML-1M; exact values and paired-bootstrap intervals are
 reported in Appendix~\ref{app:crossover-values}. Under the same 6,040-user
-protocol, CQG-Single has the highest mean shallow-retrieval accuracy in the
-current three-seed comparison, whereas CQG-AR approximately matches the
-TIGER-style mean and exhibits a smaller observed sample SD across these three
-runs.
+protocol, the interim seeds 42--47 expansion in
+Table~\ref{tab:seed-expansion-preview} preserves the three-seed ordering:
+CQG-Single has the highest mean shallow-retrieval accuracy
+($0.3112{\pm}0.0046$), whereas CQG-AR ($0.2982{\pm}0.0031$) approximately
+matches the available TIGER mean ($0.2990{\pm}0.0076$) and has a smaller
+observed sample SD. The TIGER six-seed aggregate is exploratory rather than a
+final controlled estimate because seeds 42--44 use beam 100 and seeds 45--47
+use beam 200; no significance claim is made from this mixed-beam preview.
 The paired seed-42 analysis uses a TIGER beam of 200 and a CQG-Single Top-200
 list: TIGER is slightly stronger on rare Q1 targets at shallow and intermediate
 depths, while CQG-Single is stronger on Q2--Q4 through most of the curve.
@@ -377,6 +381,44 @@ protocol matched; Sports TIGER uses approximately 5,000 sampled users per seed
 and is an unpaired diagnostic. Amazon TIGER uses our hierarchical-$k$-means
 baseline.}
 \label{tab:primary-comparison}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.06}
+\begin{tabular}{lrrrrrr}
+\toprule
+Seed &
+\shortstack{TIGER\\R@10} &
+\shortstack{TIGER\\NDCG@10} &
+\shortstack{CQG-Single\\R@10} &
+\shortstack{CQG-Single\\NDCG@10} &
+\shortstack{CQG-AR\\R@10} &
+\shortstack{CQG-AR\\NDCG@10} \\
+\midrule
+42 ($B=100$) & 0.2992 & 0.1756 & 0.3036 & 0.1736 & 0.2972 & 0.1720 \\
+43 ($B=100$) & 0.3038 & 0.1751 & 0.3161 & 0.1874 & 0.3028 & 0.1750 \\
+44 ($B=100$) & 0.2841 & 0.1643 & 0.3144 & 0.1831 & 0.2945 & 0.1711 \\
+45 ($B=200$) & 0.3028 & 0.1768 & 0.3103 & 0.1830 & 0.3010 & 0.1755 \\
+46 ($B=200$) & 0.3045 & 0.1781 & 0.3139 & 0.1849 & 0.2969 & 0.1739 \\
+47 ($B=200$) & 0.2995 & 0.1728 & 0.3089 & 0.1832 & 0.2970 & 0.1734 \\
+\midrule
+Mean $\pm$ SD &
+$0.2990{\pm}0.0076$ & $0.1738{\pm}0.0050$ &
+$\mathbf{0.3112{\pm}0.0046}$ & $\mathbf{0.1825{\pm}0.0047}$ &
+$0.2982{\pm}0.0031$ & $0.1735{\pm}0.0017$ \\
+\bottomrule
+\end{tabular}
+\caption{Interim ML-1M seed expansion over seeds 42--47, evaluated on all
+6,040 users. CQG-Single and CQG-AR use a common dense full-catalog protocol
+across all six seeds. TIGER seeds 42--44 use beam 100, whereas seeds 45--47
+currently have full-user beam-200 evaluations; its mean is therefore a
+mixed-beam diagnostic, not the final protocol-matched estimate. SD denotes
+sample standard deviation across six training seeds. Figure~\ref{fig:crossover}
+remains a seed-42 matched-budget illustration.}
+\label{tab:seed-expansion-preview}
 \end{table*}
 
 Legacy MSE candidate-generation and reranking diagnostics are reported
@@ -510,13 +552,15 @@ not universal dominance by either interface.
 \paragraph{Practical implications.}
 Continuous-query retrieval removes discrete code lookup and finite-beam
 exclusion, and can use exact scoring or ANN retrieval without changing the
-output dimensionality when encoded items are inserted. CQG-Single has the
-highest mean shallow accuracy in the current three-seed comparison, while
-CQG-AR shows that autoregressive modeling can be retained with continuous
-outputs. However, additional continuous refinement does not monotonically
-improve shallow accuracy, and the single-step boundary remains competitive
-with the three-step control. The resulting latency, memory, index-update cost,
-and cold-item accuracy have not been measured at production scale.
+output dimensionality when encoded items are inserted. In the interim
+six-seed ML-1M expansion, CQG-Single retains the highest mean shallow accuracy,
+while CQG-AR continues to show that autoregressive modeling can be retained
+with continuous outputs and exhibits lower observed seed variance than the
+mixed-beam TIGER diagnostic. However, additional continuous refinement does
+not monotonically improve shallow accuracy, and the single-step boundary
+remains competitive with the three-step control. The resulting latency,
+memory, index-update cost, and cold-item accuracy have not been measured at
+production scale.
 
 \paragraph{Limitations.}
 Our evidence is specific to the evaluated model--search--compute
