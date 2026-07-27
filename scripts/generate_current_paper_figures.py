@@ -132,15 +132,16 @@ def figure4():
         "v5h\nMSE-warm",
         "v6\nQuery-only",
         "v7\nText-aware",
-        "Scratch\nCQG-Single",
+        "Scratch MSE\n(LLM diagnostic)",
     ]
-    values = [0.003, 0.0, 0.0, 0.044, 0.212, 0.242]
+    values = [0.003, 0.0, 0.0, 0.044, 0.212, 0.248]
     colors = ["#D95F02", "#8C8C8C", "#8C8C8C", "#984807", "#984807", "#E69F00"]
     x = np.arange(len(labels))
     fig, ax = plt.subplots(figsize=(7.0, 4.6))
     bars = ax.bar(x, values, width=0.64, color=colors, edgecolor="#3B3B3B", linewidth=1.2)
-    ax.axhline(0.242, color="#3B94C5", lw=2, ls="--")
-    ax.text(4.15, 0.253, "Scratch baseline", color="#0072B2", ha="center", fontsize=12)
+    ax.axhline(0.248, color="#3B94C5", lw=2, ls="--")
+    ax.text(4.15, 0.259, "Scratch diagnostic baseline", color="#0072B2",
+            ha="center", fontsize=11)
     for index in (3, 4, 5):
         ax.text(x[index], values[index] + 0.006, f"{values[index]:.3f}", ha="center", fontsize=11)
     for index, text in enumerate(["I-I=0.93", "I-I=0.93", "I-I=0.994"]):

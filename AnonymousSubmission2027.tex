@@ -69,7 +69,7 @@ autoregressive model structure.
 Our contributions are:
 \begin{itemize}
     \item \textbf{Matched beam-support diagnostics.} We distinguish unique-code assignment, target-conditioned beam support, catalog-wide scoreability, and empirical union-of-top-$K$ coverage, and stratify the output-based quantities by item popularity.
-    \item \textbf{Crossover Phenomenon.} We identify a depth-dependent tradeoff: SID decoding can win at shallow top-$K$ precision, while continuous retrieval can overtake at deeper $K$ under a matched finite output budget.
+    \item \textbf{Crossover Phenomenon.} We identify a depth-dependent tradeoff: SID decoding can achieve higher shallow Recall@$K$ in some regimes, while continuous retrieval can overtake at deeper $K$ under a matched finite output budget.
     \item \textbf{Parallel continuous-query methods.} We introduce CQG-Single, a one-step continuous retriever, and CQG-AR, an autoregressive continuous decoder. Their comparison separates the effect of autoregression from the effect of a discrete SID vocabulary.
     \item \textbf{Controlled empirical study.} Across ML-1M, Amazon Beauty, and Amazon Sports, we analyze retrieval quality, reranked performance, loss functions, LLM backbone failures, and tokenization instability while limiting scalability claims to the tested catalog sizes.
 \end{itemize}
@@ -1099,7 +1099,10 @@ dual-tower training collapsed item representations, with item--item cosine
 similarity increasing toward 0.9936. A frozen-item hybrid avoided item
 collapse but produced loss--metric decoupling: InfoNCE loss improved while
 Recall@10 remained far below the SASRec gate. The best text-aware hybrid
-reached R@10 = 0.2118 on ML-1M but still trailed the scratch Transformer.
+reached R@10 = 0.2118 on ML-1M but still trailed the single-run, MSE-frozen
+scratch Transformer used in this diagnostic (R@10 = 0.248). This checkpoint
+is distinct from the legacy CQG-Single MSE three-seed result of 0.2425 in
+Table~\ref{tab:loss}.
 This result does not imply that LLMs cannot support recommendation; it shows
 that pretrained language representations are not automatically aligned with
 the frozen collaborative item space.
@@ -1109,7 +1112,10 @@ the frozen collaborative item space.
 \includegraphics[width=0.72\textwidth]{Figures/fig4_llm_diagnostic.pdf}
 \caption{LLM backbone diagnostics. Pretrained language backbones do not
 automatically align with the frozen collaborative item space; the best
-text-aware Qwen hybrid still trails the scratch query Transformer.}
+text-aware Qwen hybrid still trails the single-run, MSE-frozen scratch query
+Transformer used in this diagnostic (R@10 = 0.248). This checkpoint is
+separate from the three-seed CQG-Single MSE result in
+Table~\ref{tab:loss}.}
 \label{fig:llm_diagnostic}
 \end{figure}
 
@@ -1120,11 +1126,14 @@ text-aware Qwen hybrid still trails the scratch query Transformer.}
 \toprule
 Model & R@5 & R@10 & R@20 & R@50 & R@70 & R@90 \\
 \midrule
-Scratch Transformer & 0.172 & 0.248 & 0.345 & 0.498 & 0.555 & 0.595 \\
+\shortstack[l]{Scratch Transformer\\(LLM diagnostic)} & 0.172 & 0.248 & 0.345 & 0.498 & 0.555 & 0.595 \\
 Qwen text-aware hybrid & 0.134 & 0.212 & 0.308 & 0.460 & 0.517 & 0.564 \\
 \bottomrule
 \end{tabular}
-\caption{Recall curve comparison between the scratch query generator and the best tested LLM hybrid configuration.}
+\caption{Single-run recall curve comparison between the MSE-frozen scratch
+Transformer used in the LLM diagnostic and the best tested LLM hybrid
+configuration. The scratch row is not the three-seed CQG-Single MSE aggregate
+reported in Table~\ref{tab:loss}.}
 \label{tab:llmcurve}
 \end{table}
 
