@@ -357,13 +357,19 @@ claim.
 \toprule
 Method & Config. & Params & \shortstack{ML-1M\\R@10} & \shortstack{ML-1M\\NDCG@10} & \shortstack{Beauty\\R@10} & \shortstack{Sports\\R@10} \\
 \midrule
-SASRec & Full-rank baseline & -- & 0.2797 & 0.1535 & -- & -- \\
+SASRec & Full-rank baseline & \shortstack{dataset-\\dependent} & 0.2797 & 0.1535 & 0.0558 & \textbf{0.0390} \\
 TIGER & Discrete AR & 5.78M & $0.2957{\pm}0.0103$ & $0.1717{\pm}0.0064$ & $0.0474{\pm}0.0044$ & $0.0245{\pm}0.0022$ \\
 CQG-Single & Single-step & 3.2M & $\mathbf{0.3114{\pm}0.0069}$ & $\mathbf{0.1814{\pm}0.0070}$ & $\mathbf{0.0597{\pm}0.0046}$ & $0.0353{\pm}0.0014$ \\
-CQG-AR & Autoregressive ($L=3$) & 5.62M & $0.2982{\pm}0.0042$ & $0.1727{\pm}0.0020$ & $0.0571{\pm}0.0043$ & $\mathbf{0.0355{\pm}0.0004}$ \\
+CQG-AR & Autoregressive ($L=3$) & 5.62M & $0.2982{\pm}0.0042$ & $0.1727{\pm}0.0020$ & $0.0571{\pm}0.0043$ & $0.0355{\pm}0.0004$ \\
 \bottomrule
 \end{tabular}
-\caption{Cross-dataset primary comparison (mean $\pm$ sample SD; seeds 42--44). ML-1M and Beauty are full-user protocol matched; Sports TIGER uses approximately 5,000 sampled users per seed and is an unpaired diagnostic. Amazon TIGER uses our hierarchical-$k$-means baseline.}
+\caption{Cross-dataset primary comparison. SASRec entries are single-checkpoint
+full-rank baselines; TIGER, CQG-Single, and CQG-AR report mean $\pm$ sample SD
+over seeds 42--44. SASRec parameter counts are dataset dependent because its
+item embedding table scales with catalog size. ML-1M and Beauty are full-user
+protocol matched; Sports TIGER uses approximately 5,000 sampled users per seed
+and is an unpaired diagnostic. Amazon TIGER uses our hierarchical-$k$-means
+baseline.}
 \label{tab:primary-comparison}
 \end{table*}
 
@@ -384,12 +390,11 @@ limited to eliminating discrete code lookup and finite-beam exclusion.
 The broader frozen-item objective comparison is reported in
 Appendix~\ref{app:loss-objectives}.
 
-\begin{table}[t]
+\begin{table*}[t]
 \centering
 \small
-\setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.08}
-\resizebox{\columnwidth}{!}{%
+\setlength{\tabcolsep}{12pt}
+\renewcommand{\arraystretch}{1.15}
 \begin{tabular}{lrrr}
 \toprule
 Objective & R@10 & NDCG@10 & R@100 \\
@@ -398,10 +403,9 @@ Full-catalog CE & $\mathbf{0.2982{\pm}0.0042}$ & $\mathbf{0.1727{\pm}0.0020}$ & 
 Sampled CE (256 negatives) & $0.2895{\pm}0.0077$ & $0.1663{\pm}0.0034$ & $0.6592{\pm}0.0104$ \\
 \bottomrule
 \end{tabular}
-}
 \caption{ML-1M objective-visibility control (mean $\pm$ sample SD; seeds 42--44). Reducing catalog visibility to 256 sampled negatives lowers R@10 by 0.0087 but retains competitive accuracy, so objective visibility explains part, not all, of the continuous model's behavior.}
 \label{tab:objective-control}
-\end{table}
+\end{table*}
 
 \paragraph{Beam-width sensitivity.}
 For the seed-42 ML-1M TIGER checkpoint, increasing beam width from 100 to 200 raises TargetSupport from 63.8\% to 73.5\% and union catalog coverage from 95.3\% to 99.3\%. The corresponding full-user decoding time approximately doubles. Wider search therefore relaxes the observed support limitation substantially; our evidence supports a finite-compute trade-off, not an architecture-invariant catalog ceiling.
