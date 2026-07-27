@@ -47,12 +47,10 @@ This marks a substantial architectural shift from conventional sequential recomm
 
 These steps introduce two practical bottlenecks: The first is coverage and updateability: a catalog item is useful only if its SID can be generated and mapped back to the item, but newly created items may cause semantical drift between the clustering model labeling and the item meaning. The second is support imbalance: a finite hierarchical SID space is a compromise for representing an open-ended catalog. Items are not distributed uniformly across SID leaves, semantic partitions can overlap, and the generated SID set may fail to recall enough valid items even when the related item catalog itself is large.
 
-Moreover, the same discrete infrastructure also creates a structural bottleneck. SID systems depend on beam search at inference time. Beam search explores only a prefix-limited subset of the exponentially large code tree, and recent theoretical work shows that autoregressive tree generation imposes nontrivial expressiveness constraints \citep{hou2026expressiveness}. In other words, an item can have a valid SID and still receive zero retrieval probability if its path never enters the beam. 
-% This distinction is important: code assignment and code retrieval are different problems.
-
-This paper asks a concrete question: \emph{how does finite beam search distribute support across the popularity spectrum?} Aggregate Recall@$K$ can hide this structure because it mixes popular and rare targets. We therefore stratify target support by training frequency and separately measure the union of actually retrieved top-$K$ items. We use TIGER \citep{rajput2023tiger} as the SID reference point. In the canonical ML-1M diagnostic, 99.4\% of items receive unique codes, yet only 63.8\% of held-out targets occur anywhere in the width-100 beam. For a downstream reranker restricted to this beam, that realized TargetSupport is an upper bound on Recall. After equalizing the number of target items per popularity quartile, the support gap remains large on both ML-1M and Sports. We call this the \emph{Finite-Beam Reachability Ceiling}: it applies to a fixed trained model and beam budget, and can rise with wider search.
-% The first statistic concerns code assignment; the second is a target-conditioned support rate, not catalog coverage. Their coexistence motivates studying inference-side exploration after code assignment succeeds. 
-% To control unevent target exposure across popularity strata, we additionally report an exposure-normalized variant that subsamples the same number of target items per quartile.
+Because SID inference explores only a prefix-limited subset of the code tree,
+we define the \emph{Finite-Beam Reachability Ceiling} as the target-support
+upper bound induced by a fixed trained model and finite beam budget, even when
+the held-out item has a valid code.
 
 This support limitation motivates a second empirical pattern that we call the \emph{Crossover Phenomenon}. At shallow retrieval depth, SID models can perform well because autoregressive decoding concentrates probability mass on high-confidence paths. On rare ML-1M targets, TIGER outperforms a continuous alternative at R@10; at some deeper $K$, the continuous model catches up or overtakes. We treat this as an operating-point-dependent empirical transition, not as proof that a per-user hit rate equals an item-level catalog-coverage ceiling.
 
@@ -135,15 +133,9 @@ The recommendation score is cosine similarity:
 \end{equation}
 The top-K items are retrieved by exact dense scoring or ANN search. Every item in $E$ is scoreable by construction, although catalog-wide scoreability does not guarantee that every item will empirically appear in a finite top-$K$ list.
 
-The query generator is a compact causal Transformer. Each history item embedding $e_{i_j}\in\mathbb{R}^{64}$ is projected to hidden dimension $D=256$ and combined with a learned position embedding:
-\begin{equation}
-x_j = W_{\mathrm{in}} e_{i_j}+p_j .
-\end{equation}
-Four pre-norm causal self-attention blocks with four heads and feed-forward dimension 1024 process the sequence. The final hidden state is projected back into the item space:
-\begin{equation}
-q_u = W_{\mathrm{out}} h_t .
-\end{equation}
-The model has 3.2M trainable parameters, approximately 45\% fewer than the TIGER configuration used in our ML-1M comparison.
+The query generator is a causal Transformer that maps the final valid history
+state back into the shared item space. Unlike SID decoding, it produces the
+retrieval query in one forward pass without an item-token vocabulary.
 
 \subsection{CQG-AR: Autoregressive Continuous Query Generation}
 
@@ -229,22 +221,11 @@ We compare against SASRec \citep{kang2018sasrec}, TIGER-style SID retrieval \cit
 \textbf{Model training protocol.}
 We first train a two-layer SASRec with BPR on chronological next-item pairs and select its checkpoint by full-catalog validation NDCG@10. Its 64-dimensional item embedding table is then frozen and shared by both continuous methods as the history-input table, target embedding or classifier matrix, and retrieval index. The main experiments use no textual or language-model item encoder.
 
-\textbf{CQG-Single} is a four-layer, four-head causal Transformer with width 256. It directly generates one normalized query and is trained against the next-item target using full-catalog CE, MSE, or in-batch InfoNCE.
-% \textbf{CQG-AR} uses a four-layer, six-head causal Transformer with width 384 to autoregressively generate three residual query updates. Each residual is fed into the next decoding step and added to the normalized cumulative query. All steps refine the same next-item target rather than different SID levels, and only the final query receives full-catalog CE supervision. The multimodal Sports diagnostic instead uses a frozen fusion of collaborative and ImageNet-pretrained ResNet-18 features. Full implementation details are provided in Appendix Section~\ref{app:training}.
-\textbf{CQG-AR} uses a four-layer, six-head causal Transformer with width 384 to autoregressively generate three residual query updates. Each residual is fed into the next decoding step, while the cumulative query is updated by adding the residual and then normalizing the result. All steps refine the same next-item target rather than different SID levels. In the final configuration, only the final query receives direct full-catalog CE supervision. The multimodal Sports diagnostic instead uses a frozen fusion of collaborative and ImageNet-pretrained ResNet-18 features. Full implementation details are provided in Appendix Section~\ref{app:training}.
-
-
-
-% \textbf{Model training protocol.}
-% We first train a two-layer SASRec encoder with BPR on chronological next-item pairs, select the checkpoint by full-catalog validation NDCG@10, and export its 64-dimensional item lookup table as a frozen collaborative item space. The same table supplies history inputs, target vectors or classifier weights, and the retrieval index for both continuous methods; the main experiments use no text or language-model item encoder.
-
-% \textbf{CQG-Single.}
-% CQG-Single is a four-layer, four-head causal Transformer trained from scratch. It projects the frozen 64-dimensional history embeddings to width 256, produces one normalized 64-dimensional query, and learns from the next-item target using full-catalog CE, MSE, or in-batch InfoNCE. It has no pretrained backbone or trainable item tower.
-
-% \textbf{CQG-AR.}
-% CQG-AR is a four-layer, six-head causal Transformer trained from scratch at width 384. It autoregressively generates three 64-dimensional residuals, feeds each residual back as the next decoder input, and retrieves with the normalized cumulative query. All decoding steps correspond to the same next-item label rather than to different SID levels; in the final recipe only the last query receives direct CE supervision. The multimodal Sports diagnostic replaces the collaborative table with a frozen fusion of collaborative and ImageNet-pretrained ResNet-18 features. The complete sample construction
-% % , optimization, checkpoint selection and embedding-export 
-% details are described in Section~\ref{app:training}.
+\textbf{CQG-Single} generates one normalized query, whereas \textbf{CQG-AR}
+autoregressively refines a cumulative query using residual updates. Both are
+trained against the same next-item target in the frozen item space. Complete
+architectures, objectives, sample construction, optimization settings, and
+checkpoint selection are provided in Appendix~\ref{app:training}.
 
 \section{Results}
 
@@ -397,22 +378,9 @@ Sampled CE (256 negatives) & $0.2895{\pm}0.0077$ & $0.1663{\pm}0.0034$ & $0.6592
 \paragraph{Finite-beam sensitivity.}
 For the seed-42 ML-1M TIGER checkpoint, increasing beam width from 100 to 200 raises TargetSupport from 63.8\% to 73.5\% and union catalog coverage from 95.3\% to 99.3\%. The corresponding full-user decoding time approximately doubles. Wider search therefore relaxes the observed support limitation substantially; our evidence supports a finite-compute trade-off, not an architecture-invariant catalog ceiling.
 
-\subsection{LLM Backbone Investigation}
-
-We also tested whether a pretrained LLM backbone improves continuous query generation. Multiple Qwen configurations across three paradigms produced a negative but informative result (Figure~\ref{fig:llm_diagnostic}). Shared dual-tower training collapsed item representations, with item-item cosine similarity increasing toward 0.9936. A frozen-item hybrid avoided item collapse but produced loss-metric decoupling: InfoNCE loss improved while Recall@10 remained far below the SASRec gate. A text-aware hybrid performed best, reaching R@10 = 0.2118 on ML-1M, but still trailed the 3.2M scratch Transformer.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.9\columnwidth]{Figures/fig4_llm_diagnostic.pdf}
-\caption{LLM backbone diagnostics. Pretrained language backbones do not automatically align with the frozen collaborative item space; the best text-aware Qwen hybrid still trails the scratch query Transformer.}
-\label{fig:llm_diagnostic}
-\end{figure}
-
-This analysis does not imply that LLMs cannot be used for recommendation. Rather, it shows that pretrained language representations are not automatically aligned with a low-dimensional frozen collaborative item space. Continuous query generation requires explicit geometric grounding.
-
-\subsection{Tokenization Instability}
-
-The auxiliary experiments also expose fragility in our discrete tokenization implementation. Several neural RQ-VAE configurations collapsed to degenerate codebooks with less than 10\% utilization. A k-means fallback achieved high code utilization but showed large downstream variance depending on decoder configuration. We do not use these failures as evidence that all SID methods are weak; rather, they motivate careful baseline validation against published TIGER, LETTER, and EAGER results.
+Additional negative diagnostics on pretrained LLM backbones and SID
+tokenization stability are reported in Appendices~\ref{app:llm}
+and~\ref{app:tokenization}, respectively.
 
 \subsection{Training and Retrieval Complexity}
 
@@ -426,9 +394,6 @@ The full-catalog CE used by CQG-Single and CQG-AR requires scoring every item du
 \end{figure}
 
 \section{Discussion}
-
-\textbf{What finite-beam support means.}
-Incomplete support is not the same as poor model accuracy. For a fixed trained model and beam budget, a target outside the produced candidate set has zero chance of being recovered by a downstream reranker. Increasing the ML-1M beam from 100 to 200 substantially improves support and coverage, confirming that this is a property of the realized model--search--compute combination, not proof that a target is unrepresentable by every stronger SID implementation.
 
 \textbf{Why the crossover matters.}
 The Crossover Phenomenon describes a depth-dependent empirical pattern rather than a universal ranking theorem. At R@10, concentrated autoregressive probability can help; deeper in the list, finite beam support can become a bottleneck in the evaluated systems. CQG-Single and CQG-AR both keep every encoded item scoreable, but their query quality depends on embedding alignment. CQG-Single achieves the strongest current ML-1M R@10, whereas CQG-AR approximately matches TIGER-style accuracy with lower seed variance; this indicates that continuous output can preserve autoregressive modeling without requiring SID tokens, but autoregressive refinement is not automatically superior to one-step generation.
@@ -496,7 +461,7 @@ TIGER-style SID (multimodal, seed 42) & 0.0254 & 0.0137 & 0.0972 & 10.06\% \\
 \section{Experimental Protocol and Reproducibility}
 \label{app:protocol}
 
-\subsection{Legacy MSE Candidate-Generation Diagnostics}
+\subsection{Legacy Retrieve-and-Rerank Diagnostics}
 \label{app:legacy-mse}
 
 We evaluate a matched 100-candidate retrieve-and-rerank pipeline using a legacy
@@ -1036,6 +1001,27 @@ MSE & 0.2425 \\
 \section{LLM Backbone Diagnostic}
 \label{app:llm}
 
+We tested whether a pretrained LLM backbone improves continuous query
+generation. Multiple Qwen configurations across three paradigms produced a
+negative but informative result (Figure~\ref{fig:llm_diagnostic}). Shared
+dual-tower training collapsed item representations, with item--item cosine
+similarity increasing toward 0.9936. A frozen-item hybrid avoided item
+collapse but produced loss--metric decoupling: InfoNCE loss improved while
+Recall@10 remained far below the SASRec gate. The best text-aware hybrid
+reached R@10 = 0.2118 on ML-1M but still trailed the scratch Transformer.
+This result does not imply that LLMs cannot support recommendation; it shows
+that pretrained language representations are not automatically aligned with
+the frozen collaborative item space.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.72\textwidth]{Figures/fig4_llm_diagnostic.pdf}
+\caption{LLM backbone diagnostics. Pretrained language backbones do not
+automatically align with the frozen collaborative item space; the best
+text-aware Qwen hybrid still trails the scratch query Transformer.}
+\label{fig:llm_diagnostic}
+\end{figure}
+
 \begin{table}[!htbp]
 \centering
 \small
@@ -1051,10 +1037,18 @@ Qwen text-aware hybrid & 0.134 & 0.212 & 0.308 & 0.460 & 0.517 & 0.564 \\
 \label{tab:llmcurve}
 \end{table}
 
-The full recall curve confirms the main-text result: the best tested LLM hybrid underperforms the scratch Transformer at every reported depth.
+The full recall curve confirms the diagnostic: the best tested LLM hybrid
+underperforms the scratch Transformer at every reported depth.
 
 \section{Tokenization Diagnostics}
 \label{app:tokenization}
+
+Several neural RQ-VAE configurations collapsed to degenerate codebooks with
+less than 10\% utilization. A k-means fallback achieved high code utilization
+but showed large downstream variance across decoder configurations. We do not
+use these failures as evidence that SID methods are generally weak; instead,
+they motivate careful baseline validation against published TIGER, LETTER,
+and EAGER results.
 
 \begin{table}[!htbp]
 \centering
