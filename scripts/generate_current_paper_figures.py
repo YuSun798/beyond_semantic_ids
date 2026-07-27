@@ -8,6 +8,7 @@ TIGER beam-200 output; every plotted depth is measured rather than interpolated.
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
 import numpy as np
 
 
@@ -131,10 +132,19 @@ def figure3():
          0.804260),
     ]
     fig, axes = plt.subplots(2, 2, figsize=(11.5, 4.7), sharex=False)
-    blue, green, gold, limit_color = "#0072B2", "#009E73", "#E69F00", "#8C6D1F"
+    blue, green, gold, limit_color = "#0072B2", "#009E73", "#E69F00", "#D55E00"
     for idx, (ax, (title, single, ar, tiger, limit)) in enumerate(zip(axes.flat, panels)):
         cqg_arr = np.asarray(single)
         tiger_arr = np.asarray(tiger)
+        y_max = min(1.0, max(max(single), max(ar), max(tiger), limit) * 1.08)
+        ax.fill_between(
+            [ks.min() - 5, ks.max() + 5],
+            limit,
+            y_max,
+            color=limit_color,
+            alpha=0.05,
+            zorder=0,
+        )
         ax.fill_between(
             ks,
             tiger_arr,
@@ -152,23 +162,53 @@ def figure3():
         ax.axhline(
             limit,
             color=limit_color,
-            lw=1.5,
-            ls="--",
+            lw=1.1,
+            ls=(0, (5, 3)),
+            alpha=0.65,
             label="TIGER reachability limit ($B=200$)",
         )
-        ax.text(
-            149,
-            limit + 0.006,
-            f"limit {limit:.1%}",
-            ha="right",
+        limit_label = ax.text(
+            11,
+            limit + y_max * 0.012,
+            f"Reachability limit ({limit:.1%})",
+            ha="left",
             va="bottom",
-            fontsize=8,
-            fontweight="bold",
+            fontsize=7.5,
+            fontstyle="italic",
             color=limit_color,
         )
+        limit_label.set_path_effects(
+            [pe.withStroke(linewidth=2.8, foreground="white")]
+        )
+        if idx == 0:
+            ax.annotate(
+                "CQG-Single = TIGER\n$K=40$, Recall=0.1658",
+                xy=(40, single[3]),
+                xytext=(63, 0.105),
+                fontsize=7.5,
+                color="#444444",
+                ha="center",
+                arrowprops={
+                    "arrowstyle": "->",
+                    "color": "#666666",
+                    "connectionstyle": "arc3,rad=-0.18",
+                    "linewidth": 0.9,
+                },
+                bbox={
+                    "boxstyle": "round,pad=0.24",
+                    "facecolor": "white",
+                    "edgecolor": "#BBBBBB",
+                    "linewidth": 0.6,
+                    "alpha": 0.95,
+                },
+                zorder=10,
+            )
         ax.set_title(title, fontsize=11)
         ax.set_xticks([10, 50, 100, 150])
-        ax.set_xlabel("Cutoff $K$")
+        if idx in (2, 3):
+            ax.set_xlabel("Retrieval depth $K$")
+        ax.set_xlim(5, 155)
+        ax.set_ylim(0, y_max)
         ax.grid(axis="y", alpha=0.13)
         ax.spines[["top", "right"]].set_visible(False)
         if idx in (0, 2):
