@@ -213,9 +213,21 @@ Sports & 21,519 & 10,694 & $\sim$178K & 0.08\% \\
 \label{tab:data}
 \end{table}
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.9\columnwidth]{Figures/fig3_reachability.pdf}
+\caption{TIGER-style SID target support by held-out target popularity on ML-1M, seed 42, beam width 100. Bars report the user-weighted Q1--Q4 hit rates and labels give each quartile's user count and test-set share. The dashed line is the overall TargetSupport@100 of 63.8\% across all 6,040 users.}
+\label{fig:reachability}
+\end{figure}
+
 \textbf{Protocol.}
 We use leave-one-out evaluation: the last item is held out for testing, the second-to-last item for validation, and earlier interactions for training. Historical items are excluded from ranking. We report Recall@K and NDCG@K, primarily for $K\in\{10,30,50,70,90\}$ in reachability analysis and $K\in\{5,10,20\}$ in cross-dataset evaluation.
-
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{Figures/fig2_crossover.pdf}
+\caption{Measured per-quartile Recall@$K$ curves on ML-1M, seed 42. Light-blue shading highlights intervals in which CQG-Single exceeds TIGER. Every point uses saved per-user output at $K\in\{10,20,\ldots,100,120,150\}$; no metric point is interpolated. TIGER uses beam width 200 and CQG-Single uses the same Top-200 output budget.}
+\label{fig:crossover}
+\end{figure*}
 \textbf{Baselines.}
 We compare against SASRec \citep{kang2018sasrec}, TIGER-style SID retrieval \citep{rajput2023tiger}, and reported SID results from TIGER, LETTER, and EAGER where protocols permit contextual comparison. We also include non-learned dense retrieval baselines: random retrieval, last-item kNN, and mean-of-5 kNN.
 
@@ -261,12 +273,7 @@ CQG-AR & 66.4\% & 24.4\% & 45.4\% & 54.8\% & 69.6\% & 78.8\% \\
 \label{tab:target-support-comparison}
 \end{table*}
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.9\columnwidth]{Figures/fig3_reachability.pdf}
-\caption{TIGER-style SID target support by held-out target popularity on ML-1M, seed 42, beam width 100. Bars report the user-weighted Q1--Q4 hit rates and labels give each quartile's user count and test-set share. The dashed line is the overall TargetSupport@100 of 63.8\% across all 6,040 users.}
-\label{fig:reachability}
-\end{figure}
+
 
 This result separates code assignment from target support: 99.4\% unique codes do not imply that every held-out target enters a finite beam. Equivalently, 36.2\% of held-out user targets do not enter the width-100 beam for their corresponding test instances; this is not a statement that 36.2\% of catalog items are never retrieved. The distinct union-of-output catalog-coverage diagnostic is reported in Appendix~\ref{app:coverage}.
 
@@ -325,12 +332,7 @@ Aggregate & 6,040 & \textbf{0.3063} & 0.2992 & \textbf{0.5675} & 0.5581 & \textb
 \label{tab:crossover}
 \end{table*}
 
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{Figures/fig2_crossover.pdf}
-\caption{Measured per-quartile Recall@$K$ curves on ML-1M, seed 42. Light-blue shading highlights intervals in which CQG-Single exceeds TIGER. Every point uses saved per-user output at $K\in\{10,20,\ldots,100,120,150\}$; no metric point is interpolated. TIGER uses beam width 200 and CQG-Single uses the same Top-200 output budget.}
-\label{fig:crossover}
-\end{figure*}
+
 
 Legacy MSE candidate-generation and reranking diagnostics are reported
 separately in Appendix~\ref{app:legacy-mse}; they are not results from the
