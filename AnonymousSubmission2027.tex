@@ -406,22 +406,22 @@ limited to eliminating discrete code lookup and finite-beam exclusion.
 The broader frozen-item objective comparison is reported in
 Appendix~\ref{app:loss-objectives}.
 
-\begin{table}[!t]
-\centering
-\footnotesize
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.00}
-\begin{tabular}{lrrr}
-\toprule
-Objective & R@10 & NDCG@10 & R@100 \\
-\midrule
-Full-catalog CE & $\mathbf{0.2982{\pm}0.0042}$ & $\mathbf{0.1727{\pm}0.0020}$ & $\mathbf{0.6631{\pm}0.0048}$ \\
-Sampled CE (256 negatives) & $0.2895{\pm}0.0077$ & $0.1663{\pm}0.0034$ & $0.6592{\pm}0.0104$ \\
-\bottomrule
-\end{tabular}
-\caption{ML-1M objective-visibility control (mean $\pm$ sample SD; seeds 42--44). Reducing catalog visibility to 256 sampled negatives lowers R@10 by 0.0087 but retains competitive accuracy, so objective visibility explains part, not all, of the continuous model's behavior.}
-\label{tab:objective-control}
-\end{table}
+% \begin{table}[!t]
+% \centering
+% \footnotesize
+% \setlength{\tabcolsep}{4pt}
+% \renewcommand{\arraystretch}{1.00}
+% \begin{tabular}{lrrr}
+% \toprule
+% Objective & R@10 & NDCG@10 & R@100 \\
+% \midrule
+% Full-catalog CE & $\mathbf{0.2982{\pm}0.0042}$ & $\mathbf{0.1727{\pm}0.0020}$ & $\mathbf{0.6631{\pm}0.0048}$ \\
+% Sampled CE (256 negatives) & $0.2895{\pm}0.0077$ & $0.1663{\pm}0.0034$ & $0.6592{\pm}0.0104$ \\
+% \bottomrule
+% \end{tabular}
+% \caption{ML-1M objective-visibility control (mean $\pm$ sample SD; seeds 42--44). Reducing catalog visibility to 256 sampled negatives lowers R@10 by 0.0087 but retains competitive accuracy, so objective visibility explains part, not all, of the continuous model's behavior.}
+% \label{tab:objective-control}
+% \end{table}
 
 \paragraph{Scoreability versus empirical output coverage.}
 Catalog-wide scoreability does not imply that every item appears in a finite
@@ -503,7 +503,7 @@ continuous refinements do not yield a monotonic R@10 or NDCG@10 improvement.}
 \paragraph{Beam-width sensitivity.}
 For the seed-42 ML-1M TIGER checkpoint, increasing beam width from 100 to 200 raises TargetSupport from 63.8\% to 73.5\% and union catalog coverage from 95.3\% to 99.3\%. The corresponding full-user decoding time approximately doubles. Wider search therefore relaxes the observed support limitation substantially; our evidence supports a finite-compute trade-off, not an architecture-invariant catalog ceiling.
 
-\section{Discussion and Limitations}
+\section{Discussion}
 
 \paragraph{Interpretation of the crossover.}
 The Crossover Phenomenon is an operating-point-dependent empirical pattern
@@ -529,7 +529,7 @@ remains competitive with the three-step control. The resulting latency,
 memory, index-update cost, and cold-item accuracy have not been measured at
 production scale.
 
-\paragraph{Limitations.}
+\section{Limitation}
 Our evidence is specific to the evaluated model--search--compute
 configurations. Wider beams substantially raise TIGER target support, and our
 hierarchical-$k$-means TIGER-style baseline is weaker than published SID
