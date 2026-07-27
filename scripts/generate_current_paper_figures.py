@@ -36,12 +36,12 @@ def save(fig, name):
 
 def figure2():
     labels = [
-        "Q1 (rare)\n$n$=192 (3.2%)",
-        "Q2\n$n$=582 (9.6%)",
-        "Q3\n$n$=1,321 (21.9%)",
-        "Q4 (popular)\n$n$=3,945 (65.3%)",
+        "Q1 (rare)\n$n$=193 (3.2%)",
+        "Q2\n$n$=581 (9.6%)",
+        "Q3\n$n$=1,322 (21.9%)",
+        "Q4 (popular)\n$n$=3,944 (65.3%)",
     ]
-    values = [24.0, 47.1, 56.1, 70.8]
+    values = [24.4, 47.0, 56.1, 70.8]
     overall = 63.8
     x = np.arange(len(values))
     fig, ax = plt.subplots(figsize=(7.2, 5.4))
@@ -59,7 +59,7 @@ def figure2():
         bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.82, "pad": 1.5},
     )
     ax.set_title("TIGER-style SID (beam width 100)", fontsize=15, fontweight="bold")
-    ax.set_ylabel("Beam Search Reachability (%)", fontsize=16, color="black")
+    ax.set_ylabel("Target Support (%)", fontsize=16, color="black")
     ax.set_xticks(x, labels, fontsize=10, color="black")
     ax.set_yticks([0, 25, 50, 75, 100])
     ax.tick_params(axis="y", labelsize=13, colors="black")
@@ -136,7 +136,7 @@ def figure4():
         "v5h\nMSE-warm",
         "v6\nQuery-only",
         "v7\nText-aware",
-        "Scratch\nCQG-Rec",
+        "Scratch\nCQG-Single",
     ]
     values = [0.003, 0.0, 0.0, 0.044, 0.212, 0.242]
     colors = ["#D95F02", "#8C8C8C", "#8C8C8C", "#984807", "#984807", "#E69F00"]

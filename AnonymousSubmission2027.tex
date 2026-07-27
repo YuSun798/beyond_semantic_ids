@@ -13,6 +13,8 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{multirow}
+\usepackage{float}
+\usepackage{placeins}
 
 \pdfinfo{
 /TemplateVersion (2027.1)
@@ -36,12 +38,12 @@ Generative recommendation (GR) retrieves items by autoregressively decoding disc
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.8\textwidth]{Figures/fig1_1_pipeline.pdf}
+\includegraphics[width=0.8\textwidth]{Figures/fig1_pipeline.pdf}
 \caption{Discrete SID retrieval versus the two continuous-query methods. SID systems tokenize items and autoregressively expand code paths with beam search. CQG-Single generates one continuous query; CQG-AR autoregressively refines continuous residuals. Both continuous methods retrieve in a frozen item space by dense scoring or ANN.}
 \label{fig:pipeline}
 \end{figure*}
 
-Generative recommendation (GR) retrieves items by generating symbolic identifiers rather than directly scoring the entire catalog. The most influential instance of this paradigm is Semantic-ID (SID) recommendation: items are first quantized into discrete code sequences, and an autoregressive model decodes those sequences conditioned on user demographic and engagement feature \citep{rajput2023tiger,zheng2024letter,wang2024eager}. This formulation converts recommendation into a sequence-generation problem, and supports constrained decoding through a trie, ensuring that the generated token sequence corresponds to a valid item.
+Generative recommendation (GR) retrieves items by generating symbolic identifiers rather than directly scoring the entire catalog. The most influential instance of this paradigm is Semantic-ID (SID) recommendation: items are first quantized into discrete code sequences, and an autoregressive model decodes those sequences conditioned on user attributes and interaction history \citep{rajput2023tiger,zheng2024letter,wang2024eager}. This formulation converts recommendation into a sequence-generation problem, and supports constrained decoding through a trie, ensuring that the generated token sequence corresponds to a valid item.
 
 This marks a substantial architectural shift from conventional sequential recommenders. Models such as SASRec encode user histories, user features, and item representations, then score candidate items discriminatively \citep{kang2018sasrec}. In SID-based generative recommendation, the output interface is instead moved into a language-model-style generator: a decoder is trained to emit the SID sequence. Larger pretrained language models can provide useful generic knowledge and may benefit from scaling behavior as model and data size increase \citep{kaplan2020scaling}, but SID-based GR still requires three additional system components: First, items must be compressed into a finite hierarchical identifier space, using vector-quantization methods such as VQ-VAE \citep{vandenoord2017vqvae}, residual quantization as in RQ-VAE \citep{lee2022rqvae}, residual or balanced hierarchical clustering, or industrial generative retrieval designs such as OneRec \citep{deng2025onerec}. Second, the generator must be trained either by adapting a pretrained LLM through continued pretraining and supervised fine-tuning, where SID tokens become a new vocabulary that must be aligned with the LLM's semantic space, or by training a smaller decoder-only model from scratch, which sacrifices pretrained knowledge for a cleaner SID prediction objective. Third, inference decodes SID sequences from user features and sequential history, then maps the generated codes to item IDs or expands them through item-to-item retrieval. (Figure~\ref{fig:pipeline})
 
@@ -54,7 +56,15 @@ the held-out item has a valid code.
 
 This support limitation motivates a second empirical pattern that we call the \emph{Crossover Phenomenon}. At shallow retrieval depth, SID models can perform well because autoregressive decoding concentrates probability mass on high-confidence paths. On rare ML-1M targets, TIGER outperforms a continuous alternative at R@10; at some deeper $K$, the continuous model catches up or overtakes. We treat this as an operating-point-dependent empirical transition, not as proof that a per-user hit rate equals an item-level catalog-coverage ceiling.
 
-To isolate this mechanism, we propose two new and complementary continuous-generation paradigms for GR. \textbf{CQG-Single} is a deliberately minimal vocabulary-free model that maps user context to one continuous query in a frozen item space. \textbf{CQG-AR} retains a TIGER-like autoregressive decoder but replaces SID-token prediction with continuous residual generation, feeding each generated residual back to refine the query. Both retrieve by dense scoring or approximate nearest-neighbor (ANN) search without a code-to-item lookup. CQG-Single tests the simplest continuous interface, while CQG-AR controls for autoregressive model structure.
+To isolate this mechanism, we study two complementary continuous-query
+formulations. \textbf{CQG-Single} is a deliberately minimal vocabulary-free
+model that maps user context to one continuous query in a frozen item space.
+\textbf{CQG-AR} retains a TIGER-like autoregressive decoder but replaces
+SID-token prediction with continuous residual generation, feeding each
+generated residual back to refine the query. Both retrieve by dense scoring
+or approximate nearest-neighbor (ANN) search without a code-to-item lookup.
+CQG-Single tests the simplest continuous interface, while CQG-AR controls for
+autoregressive model structure.
 
 Our contributions are:
 \begin{itemize}
@@ -146,12 +156,18 @@ h_\ell &= D_\phi(c_u,\Delta_{<\ell}),\\
 \hat e_u^{(\ell)} &=
 \operatorname{norm}\!\left(\hat e_u^{(\ell-1)}+\Delta_\ell\right).
 \end{align}
+We initialize the cumulative query as
+\(\hat e_u^{(0)}=\mathbf{0}\).
 The generated residual $\Delta_\ell$ is projected back into the decoder input space and appended as the next autoregressive input. After $L$ steps, the refined query $\hat e_u^{(L)}$ retrieves items from the same frozen embedding matrix $E$. Thus CQG-AR preserves the conditional, step-wise decoding structure of SID retrieval while removing the SID vocabulary, codebook lookup, and discrete beam expansion.
 % We use $L=3$ as an architecture-matched control for the three-level SID output, rather than assuming that three continuous refinements are intrinsically necessary. The $L=1$ setting is its single-step boundary and provides a controlled link to CQG-Single.
 
 \subsection{Training Objectives}
 
-We evaluate three objectives to expose the accuracy--scalability tradeoff. For CQG-Single, $q_b$ below is the single generated query. For CQG-AR, it is the final refined query $\hat e_b^{(L)}$; we additionally apply discounted catalog-level supervision to intermediate refinements.
+We evaluate four CQG objectives: full-catalog CE, sampled CE, in-batch
+InfoNCE, and MSE. For CQG-Single, $q_b$ below is the single generated query;
+for CQG-AR, it is the final refinement $\hat e_b^{(L)}$. In the primary
+CQG-AR configuration, only the final query receives direct CE supervision;
+intermediate supervision is used only in the decoding-depth ablation.
 
 \textbf{Full-catalog cross-entropy.}
 Our primary objective treats retrieval as classification over all items:
@@ -164,14 +180,27 @@ Our primary objective treats retrieval as classification over all items:
 \end{equation}
 where $\tau=0.07$. CE gives complete catalog visibility at training time but costs $O(N)$ per step.
 
-\textbf{Bayesian personalized ranking.}
-For larger catalogs, we use one positive and one sampled negative:
+\textbf{Sampled cross-entropy.}
+To control training-time catalog visibility, sampled CE replaces the full
+denominator with the positive item and a sampled set
+\(\mathcal S_b\) of negatives:
 \begin{equation}
-\mathcal{L}_{\mathrm{BPR}}
-=-\frac{1}{B}\sum_{b=1}^{B}
-\log \sigma(q_b^\top e_b^+ - q_b^\top e_b^-).
+\mathcal{L}_{\mathrm{sCE}}
+=-\frac{1}{B}\sum_{b=1}^{B}\log
+\frac{\exp(q_b^\top e_b^+/\tau)}
+{\exp(q_b^\top e_b^+/\tau)+
+\sum_{j\in\mathcal S_b}\exp(q_b^\top e_j/\tau)} .
 \end{equation}
-BPR scales independently of $N$ but provides weaker training-time catalog coverage.
+The reported control uses 256 sampled negatives.
+
+\textbf{In-batch InfoNCE.}
+InfoNCE treats the other target items in the minibatch as negatives:
+\begin{equation}
+\mathcal{L}_{\mathrm{NCE}}
+=-\frac{1}{B}\sum_{b=1}^{B}\log
+\frac{\exp(q_b^\top e_b^+/\tau)}
+{\sum_{j\in\mathcal B}\exp(q_b^\top e_j^+/\tau)} .
+\end{equation}
 
 \textbf{Mean-squared error.}
 We also test direct embedding regression:
@@ -179,12 +208,13 @@ We also test direct embedding regression:
 \mathcal{L}_{\mathrm{MSE}}
 =\frac{1}{B}\sum_{b=1}^{B}\|q_b-e_b^+\|_2^2 .
 \end{equation}
-MSE preserves geometric alignment but yields lower retrieval precision than CE in our experiments.
+MSE preserves geometric alignment but yields lower retrieval accuracy than CE
+in our experiments. BPR is used to pretrain the shared SASRec item encoder,
+not as one of the reported CQG objectives.
 
 \subsection{Retrieval, Reranking, and Contrast with SID}
 
-Standalone CQG-Single ranks items according to $q_u^\top e_i$, while CQG-AR uses $(\hat e_u^{(L)})^\top e_i$. Exact catalog scoring can be replaced by ANN search, such as FAISS, for large catalogs. CQG-AR may also retrieve candidates from multiple intermediate or interest-specific queries and merge them under a fixed candidate budget. In our retrieve-and-rerank evaluation, the continuous generator retrieves 100 candidates, which are then reranked by a pretrained SASRec model. In contrast, SID retrieval requires codebook learning, autoregressive discrete decoding, beam search, and code-to-item lookup; a finite beam explores only a restricted subset of valid code paths (Figure~\ref{fig:pipeline}). CQG-Single instead generates one continuous query, while CQG-AR preserves step-wise autoregressive generation with continuous outputs. Both directly query the item embedding index without introducing an item-token vocabulary.
-% For larger catalogs, exact scoring can be replaced with an ANN index such as FAISS \citep{johnson2021faiss}. CQG-AR can also expose multiple intermediate or interest-specific queries, execute ANN for each, and merge their candidates under a fixed total candidate budget. We evaluate a modular retrieve-and-rank pipeline in which the continuous generator retrieves 100 candidates and a pretrained SASRec model reranks only those candidates.
+Standalone CQG-Single ranks items according to $q_u^\top e_i$, while CQG-AR uses $(\hat e_u^{(L)})^\top e_i$. Exact catalog scoring can be replaced by ANN search, such as FAISS, for large catalogs. Our CQG-AR experiments retrieve only with the final query \(\hat e_u^{(L)}\); merging candidates from intermediate or interest-specific queries is an untested extension. In our retrieve-and-rerank evaluation, the continuous generator retrieves 100 candidates, which are then reranked by a pretrained SASRec model. In contrast, SID retrieval requires codebook learning, autoregressive discrete decoding, beam search, and code-to-item lookup; a finite beam explores only a restricted subset of valid code paths (Figure~\ref{fig:pipeline}). CQG-Single instead generates one continuous query, while CQG-AR preserves step-wise autoregressive generation with continuous outputs. Both directly query the item embedding index without introducing an item-token vocabulary.
 
 % \subsection{Contrast with SID Retrieval}
 
@@ -195,7 +225,7 @@ Standalone CQG-Single ranks items according to $q_u^\top e_i$, while CQG-AR uses
 \subsection{Experimental Setup}
 
 \textbf{Datasets.}
-We use MovieLens-1M (ML-1M), Amazon Beauty, and Amazon Sports. ML-1M is the primary controlled diagnostic because its catalog is small enough for exact full-catalog scoring. Beauty and Sports test cross-domain behavior. Our processed Sports split (21,519 users and 10,694 items) differs from the commonly reported 5-core split used by TIGER, LETTER, and EAGER; consequently, we do not directly compare our Sports values with their published numbers. We exclude Yelp because its SID and continuous baselines are not aligned under one evaluation protocol.
+We use MovieLens-1M (ML-1M), Amazon Beauty, and Amazon Sports. ML-1M is the primary controlled diagnostic because its catalog is small enough for exact full-catalog scoring. Beauty and Sports test cross-domain behavior. Our processed Sports split (21,519 users and 10,693 non-padding items) differs from the commonly reported 5-core split used by TIGER, LETTER, and EAGER; consequently, we do not directly compare our Sports values with their published numbers. We exclude Yelp because its SID and continuous baselines are not aligned under one evaluation protocol.
 
 \begin{table}[t]
 \centering
@@ -205,11 +235,16 @@ We use MovieLens-1M (ML-1M), Amazon Beauty, and Amazon Sports. ML-1M is the prim
 Dataset & Users & Items & Interactions & Density \\
 \midrule
 ML-1M & 6,040 & 3,416 & 999K & 4.84\% \\
-Beauty & 22,363 & 12,102 & 198K & 0.07\% \\
-Sports & 21,519 & 10,694 & $\sim$178K & 0.08\% \\
+Beauty & 22,363 & 12,101 & 198K & 0.07\% \\
+Sports & 21,519 & 10,693 & $\sim$178K & 0.08\% \\
 \bottomrule
 \end{tabular}
-\caption{Dataset statistics. Density is defined as $|\mathcal{R}|/(|\mathcal{U}||\mathcal{I}|)$, where $\mathcal{R}$ is the set of observed interactions, $\mathcal{U}$ the users, and $\mathcal{I}$ the items. The processed Sports split differs from the standard 5-core split used in several published SID studies, so its results are treated as within-paper diagnostics.}
+\caption{Dataset statistics. Item counts exclude the padding row. Density is
+defined as $|\mathcal{R}|/(|\mathcal{U}||\mathcal{I}|)$, where
+$\mathcal{R}$ is the set of observed interactions, $\mathcal{U}$ the users,
+and $\mathcal{I}$ the non-padding items. The processed Sports split differs
+from the standard 5-core split used in several published SID studies, so its
+results are treated as within-paper diagnostics.}
 \label{tab:data}
 \end{table}
 
@@ -257,14 +292,19 @@ CQG-Single & \textbf{67.3\%} & \textbf{26.4\%} & \textbf{46.9\%} & \textbf{56.3\
 CQG-AR & 66.4\% & 24.4\% & 45.4\% & 54.8\% & 69.6\% & 78.8\% \\
 \bottomrule
 \end{tabular}
-\caption{Finite-output target support on ML-1M, seed 42. Target-in-Output@100 is user weighted. Q1--Q4 are item-balanced means over 162, 346, 584, and 781 distinct test-target items, respectively. TargetItemSupport@200 counts the fraction of all 1,873 distinct test-target items retrieved for at least one associated test instance. TIGER uses beam widths 100 and 200 for the corresponding columns; CQG uses Top-100 and Top-200 dense outputs. These quantities are empirical finite-output support, not catalog-wide scoreability.}
+\caption{Finite-output target support on ML-1M, seed 42. Target-in-Output@100 is user weighted. Q1--Q4 use the same training-frequency item-to-quartile mapping as Figures~\ref{fig:reachability} and~\ref{fig:crossover}, then compute item-balanced means over 162, 346, 584, and 781 distinct test-target items, respectively. TargetItemSupport@200 counts the fraction of all 1,873 distinct test-target items retrieved for at least one associated test instance. TIGER uses beam widths 100 and 200 for the corresponding columns; CQG uses Top-100 and Top-200 dense outputs. These quantities are empirical finite-output support, not catalog-wide scoreability.}
 \label{tab:target-support-comparison}
 \end{table*}
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.9\columnwidth]{Figures/fig3_reachability.pdf}
-\caption{TIGER-style SID target support by held-out target popularity on ML-1M, seed 42, beam width 100. Bars report the user-weighted Q1--Q4 hit rates and labels give each quartile's user count and test-set share. The dashed line is the overall TargetSupport@100 of 63.8\% across all 6,040 users.}
+\caption{TIGER-style SID target support by held-out target popularity on
+ML-1M, seed 42, beam width 100. Bars report the user-weighted Q1--Q4 hit rates
+and labels give each quartile's user count and test-set share. The same
+training-frequency item-to-quartile mapping is used in
+Figure~\ref{fig:crossover} and Table~\ref{tab:crossover}. The dashed line is
+the overall TargetSupport@100 of 63.8\% across all 6,040 users.}
 \label{fig:reachability}
 \end{figure}
 
@@ -273,18 +313,24 @@ This result separates code assignment from target support: 99.4\% unique codes d
 \subsection{Crossover Phenomenon}
 
 Table~\ref{tab:primary-comparison} provides the primary cross-dataset
-comparison, while Table~\ref{tab:crossover} and Figure~\ref{fig:crossover}
-examine retrieval depth and target popularity on ML-1M. Under the same
-6,040-user protocol, CQG-Single is strongest at shallow retrieval, whereas
-CQG-AR approximately matches TIGER-style accuracy with lower seed variance.
+comparison, while Figure~\ref{fig:crossover} examines retrieval depth and
+target popularity on ML-1M; exact values and paired-bootstrap intervals are
+reported in Appendix~\ref{app:crossover-values}. Under the same 6,040-user
+protocol, CQG-Single has the highest mean shallow-retrieval accuracy in the
+current three-seed comparison, whereas CQG-AR approximately matches the
+TIGER-style mean and exhibits a smaller observed sample SD across these three
+runs.
 The paired seed-42 analysis uses a TIGER beam of 200 and a CQG-Single Top-200
 list: TIGER is slightly stronger on rare Q1 targets at shallow and intermediate
 depths, while CQG-Single is stronger on Q2--Q4 through most of the curve.
 Beauty does not reproduce this rare-item shallow advantage; its
-protocol-matched seed-42 comparison favors CQG-Single at $K=10,50,90$ (all
-$p<.001$). Sports remains an unpaired diagnostic because its TIGER runs use
-sampled users. We therefore interpret crossover as an operating-point-dependent
-empirical pattern rather than a universal dominance claim.
+paired seed-42 checkpoints favor CQG-Single under a user-level bootstrap at
+$K=10,50,90$ (all $p<.001$), which does not capture training-seed
+uncertainty. On ML-1M, none of the three aggregate paired differences is
+significant at the 0.05 level. Sports remains an unpaired diagnostic because
+its TIGER runs use sampled users. We therefore interpret crossover as an
+operating-point-dependent empirical pattern rather than a universal dominance
+claim.
 
 \begin{table*}[t]
 \centering
@@ -304,27 +350,6 @@ CQG-AR & Autoregressive ($L=3$) & 5.62M & $0.2982{\pm}0.0042$ & $0.1727{\pm}0.00
 \label{tab:primary-comparison}
 \end{table*}
 
-\begin{table*}[t]
-\centering
-\small
-\begin{tabular}{lrrrrrrr}
-\toprule
- & & \multicolumn{2}{c}{R@10} & \multicolumn{2}{c}{R@50} & \multicolumn{2}{c}{R@90} \\
-\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
-Quartile & Users & CQG & TIGER & CQG & TIGER & CQG & TIGER \\
-\midrule
-Q1 rare & 193 & 0.0622 & \textbf{0.0674} & 0.1865 & \textbf{0.1917} & \textbf{0.2850} & 0.2642 \\
-Q2 & 581 & \textbf{0.1773} & 0.1756 & \textbf{0.3959} & 0.3873 & \textbf{0.4923} & 0.4854 \\
-Q3 & 1,322 & \textbf{0.2519} & 0.2436 & \textbf{0.5030} & 0.4811 & \textbf{0.6006} & 0.5802 \\
-Q4 popular & 3,944 & \textbf{0.3555} & 0.3474 & \textbf{0.6331} & 0.6270 & 0.7186 & \textbf{0.7203} \\
-\midrule
-Aggregate & 6,040 & \textbf{0.3063} & 0.2992 & \textbf{0.5675} & 0.5581 & \textbf{0.6571} & 0.6525 \\
-\bottomrule
-\end{tabular}
-\caption{Paired seed-42 ML-1M diagnostic using the same 6,040 users, TIGER beam 200, and CQG-Single Top-200 output. Aggregate CQG-minus-TIGER Recall differences are 0.0071 at $K=10$ (95\% CI $[-0.0025,0.0169]$, $p=.149$), 0.0094 at $K=50$ (CI $[-0.0002,0.0190]$, $p=.056$), and 0.0046 at $K=90$ (CI $[-0.0041,0.0132]$, $p=.319$), from 10,000 paired user-bootstrap resamples.}
-\label{tab:crossover}
-\end{table*}
-
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{Figures/fig2_crossover.pdf}
@@ -338,28 +363,16 @@ CE-trained CQG-Single or CQG-AR models used in the primary comparison.
 
 \section{Analysis}
 
-\subsection{Loss Objective Tradeoff}
-
-Table~\ref{tab:loss} compares objectives on frozen embeddings using the corrected leave-one-out evaluator, which appends the validation item to the test history. Full-catalog CE produces the strongest Recall@10, while MSE and in-batch InfoNCE provide weaker catalog discrimination; Figure~\ref{fig:ce_mse} summarizes the contrast. The temperature ablation in Appendix~\ref{app:temperature} preserves this ordering.
-
-This objective effect is a competing explanation for any continuous--SID accuracy gap: full-catalog CE exposes each continuous query to every item at each update, whereas the SID decoder receives token-level supervision over code positions. CQG-AR matches the broad autoregressive architecture but does not by itself match catalog visibility. We therefore report a sampled-CE control with a fixed 256-negative budget and avoid attributing an accuracy difference solely to the output interface. The interface claim supported without this assumption is narrower: CQG-Single and CQG-AR eliminate discrete code lookup and make every encoded item scoreable, while their finite top-$K$ coverage and accuracy remain empirical quantities.
-
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{lrr}
-\toprule
-Objective & Test R@10 & vs. SASRec \\
-\midrule
-SASRec BPR & 0.2797 & 100.0\% \\
-Softmax CE & \textbf{0.3114} & 111.3\% \\
-MSE & 0.2425 & 86.7\% \\
-InfoNCE & 0.2386 & 85.3\% \\
-\bottomrule
-\end{tabular}
-\caption{Loss objective landscape on ML-1M. CE and MSE are three-seed means under the corrected test-history protocol; InfoNCE is retained as an auxiliary diagnostic.}
-\label{tab:loss}
-\end{table}
+\paragraph{Objective visibility.}
+Full-catalog CE gives continuous queries access to every item at each update,
+whereas SID decoding receives token-level supervision. To control this
+difference, we train CQG-AR with 256 sampled negatives. Sampled CE reduces
+R@10 from 0.2982 to 0.2895 while retaining performance close to the
+TIGER-style baseline. Thus training-time catalog visibility explains part,
+but not all, of the observed behavior; our architecture-level claim is
+limited to eliminating discrete code lookup and finite-beam exclusion.
+The broader frozen-item objective comparison is reported in
+Appendix~\ref{app:loss-objectives}.
 
 \begin{table}[t]
 \centering
@@ -376,35 +389,21 @@ Sampled CE (256 negatives) & $0.2895{\pm}0.0077$ & $0.1663{\pm}0.0034$ & $0.6592
 \label{tab:objective-control}
 \end{table}
 
-\paragraph{Finite-beam sensitivity.}
+\paragraph{Beam-width sensitivity.}
 For the seed-42 ML-1M TIGER checkpoint, increasing beam width from 100 to 200 raises TargetSupport from 63.8\% to 73.5\% and union catalog coverage from 95.3\% to 99.3\%. The corresponding full-user decoding time approximately doubles. Wider search therefore relaxes the observed support limitation substantially; our evidence supports a finite-compute trade-off, not an architecture-invariant catalog ceiling.
 
-Additional negative diagnostics on pretrained LLM backbones and SID
-tokenization stability are reported in Appendices~\ref{app:llm}
-and~\ref{app:tokenization}, respectively.
-
-\subsection{Training and Retrieval Complexity}
-
-The full-catalog CE used by CQG-Single and CQG-AR requires scoring every item during training, so the present experiments establish feasibility only at the catalog sizes reported in Table~\ref{tab:data}. CQG-AR additionally performs $L$ decoder refinements, trading inference cost for an architecture-matched continuous alternative to SID decoding. Sampled softmax, cached ANN hard negatives, and ANN retrieval are plausible extensions, but we do not evaluate million-item training, latency, or memory in this study. Likewise, inserting a new encoded item into a dense index is an interface property rather than evidence that either method will rank cold items well.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{Figures/fig5_ce_mse.pdf}
-\caption{CQG-Single loss-objective comparison on frozen item embeddings. Cross-entropy improves retrieval quality over direct MSE regression; both remain vocabulary-free and catalog-wide scoreable.}
-\label{fig:ce_mse}
-\end{figure}
-
+\FloatBarrier
 \section{Discussion}
 
 \textbf{Why the crossover matters.}
-The Crossover Phenomenon describes a depth-dependent empirical pattern rather than a universal ranking theorem. At R@10, concentrated autoregressive probability can help; deeper in the list, finite beam support can become a bottleneck in the evaluated systems. CQG-Single and CQG-AR both keep every encoded item scoreable, but their query quality depends on embedding alignment. CQG-Single achieves the strongest current ML-1M R@10, whereas CQG-AR approximately matches TIGER-style accuracy with lower seed variance; this indicates that continuous output can preserve autoregressive modeling without requiring SID tokens, but autoregressive refinement is not automatically superior to one-step generation.
+The Crossover Phenomenon describes a depth-dependent empirical pattern rather than a universal ranking theorem. At R@10, concentrated autoregressive probability can help; deeper in the list, finite beam support can become a bottleneck in the evaluated systems. CQG-Single and CQG-AR both keep every encoded item scoreable, but their query quality depends on embedding alignment. CQG-Single has the highest mean ML-1M R@10 in the current three-seed comparison, whereas CQG-AR approximately matches the TIGER-style mean and has a smaller observed sample SD across these runs; this indicates that continuous output can preserve autoregressive modeling without requiring SID tokens, but autoregressive refinement is not automatically superior to one-step generation.
 
 \textbf{Practical implications.}
-For static catalogs with strong top-10 precision requirements, SID methods remain competitive. Continuous-query retrieval offers a simpler score-and-index interface and can coexist with existing rankers as a recall stage. The depth ablation further shows that a single continuous output is competitive with multi-step continuous refinement in our setting, so three-level generation is useful as an architecture-matched control but is not required for the strongest continuous-query design. This removes serial refinement steps in addition to avoiding SID beam expansion; whether the resulting interface yields better end-to-end latency, memory use, or cold-item accuracy at production scale remains to be measured.
+For static catalogs with strong shallow-retrieval accuracy requirements, SID methods remain competitive. Continuous-query retrieval offers a simpler score-and-index interface and can coexist with existing rankers as a recall stage. The depth ablation further shows that a single continuous output is competitive with multi-step continuous refinement in our setting, so three-level generation is useful as an architecture-matched control but is not required for the highest-mean continuous-query result reported here. This removes serial refinement steps in addition to avoiding SID beam expansion; whether the resulting interface yields better end-to-end latency, memory use, or cold-item accuracy at production scale remains to be measured.
 
 \section{Limitations}
 
-Our study has several limitations. Matched-target subsampling reduces unequal target counts across popularity groups but remains observational rather than a causal intervention on user demand. The completed Beauty comparison confirms a continuous-method advantage rather than the ML-1M rare-item shallow crossover, so the crossover pattern is not universal across datasets. Our TIGER-style comparison uses hierarchical k-means over SASRec embeddings, and our closer T5/RQ-VAE recipe does not match the reference implementation's reported Beauty accuracy, as documented in Appendix~\ref{app:tiger_recipe}. Thus, its absolute effect sizes must not be generalized to a fully reproduced TIGER checkpoint. The current CQG-AR residual steps share one next-item target and provide only limited improvement over its $L=1$ boundary. Sampled CE retains most, but not all, of the full-catalog objective's accuracy; million-item training, ANN latency, and memory remain unmeasured. Finally, CQG-Single and CQG-AR inherit preference-relevant errors in the frozen item space.
+Our study has several limitations. Matched-target subsampling reduces unequal target counts across popularity groups but remains observational rather than a causal intervention on user demand. The completed Beauty comparison confirms a continuous-method advantage rather than the ML-1M rare-item shallow crossover, so the crossover pattern is not universal across datasets. Our TIGER-style comparison uses hierarchical k-means over SASRec embeddings, and our closer T5/RQ-VAE recipe does not match the reference implementation's reported Beauty accuracy, as documented in Appendix~\ref{app:tiger_recipe}. Thus, its absolute effect sizes must not be generalized to a fully reproduced TIGER checkpoint. Neural RQ-VAE variants were unstable in our implementation (Appendix~\ref{app:tokenization}), and auxiliary LLM-backbone experiments did not improve alignment with the frozen collaborative item space (Appendix~\ref{app:llm}). The current CQG-AR residual steps share one next-item target and provide only limited improvement over its $L=1$ boundary. Full-catalog CE costs $O(N)$ per update and has only been evaluated on the reported catalog sizes; million-item training, ANN latency, memory, and dynamic-catalog accuracy remain unmeasured. Finally, CQG-Single and CQG-AR inherit preference-relevant errors in the frozen item space.
 
 \section{Conclusion}
 
@@ -421,12 +420,12 @@ This paper studies finite-beam output support as a practical bottleneck in SID-b
 \label{app:auto-completed}
 % BEGIN AUTO_RESULTS
 We report completed, protocol-matched diagnostics on the two Amazon datasets used in the main paper. These results assess the robustness of our TIGER-style implementation; they are not presented as reproductions of the published TIGER architecture.
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \small
 \begin{tabular}{llrrrrr}
 \toprule
-Dataset & Seed & R@10 & N@10 & R@30 & R@90 & Reach. \\
+Dataset & Seed & R@10 & N@10 & R@30 & R@90 & TargetSupport@100 \\
 \midrule
 Beauty & 42 & 0.0454 & 0.0265 & 0.0840 & 0.1356 & 14.00\% \\
 Beauty & 43 & 0.0436 & 0.0250 & 0.0742 & 0.1240 & 12.76\% \\
@@ -436,18 +435,22 @@ Sports & 43 & 0.0250 & 0.0127 & 0.0508 & 0.1012 & 10.76\% \\
 Sports & 44 & 0.0264 & 0.0137 & 0.0532 & 0.1072 & 11.28\% \\
 \bottomrule
 \end{tabular}
-\caption{Three-seed TIGER-style SID diagnostics on Beauty and Sports. Each row uses the same leave-one-out evaluator and beam width 100. The low coverage, particularly on Sports, limits claims about architecture-independent effect size and motivates comparison with published SID results.}
+\caption{Three-seed TIGER-style SID diagnostics on Beauty and Sports. Each
+row uses the same leave-one-out evaluator and beam width 100. The low
+user-level target support, particularly on Sports, limits claims about
+architecture-independent effect size and motivates comparison with published
+SID results.}
 \label{tab:auto-tiger-results}
 \end{table}
 
 \paragraph{Preliminary Sports multimodal diagnostic.}
-We additionally ran a single-seed diagnostic in which CQG-Single and the TIGER-style decoder share item embeddings formed from collaborative features and ImageNet-pretrained ResNet-18 image features. Images were available for only 5,268 of 10,694 catalog items; items without an image use the collaborative component with a zero image feature. Because image availability is incomplete and no multi-seed estimate is available, this experiment is preliminary and is not used to support the main claims.
-\begin{table}[!htbp]
+We additionally ran a single-seed diagnostic in which CQG-Single and the TIGER-style decoder share item embeddings formed from collaborative features and ImageNet-pretrained ResNet-18 image features. Images were available for only 5,268 of 10,693 non-padding catalog items; items without an image use the collaborative component with a zero image feature. Because image availability is incomplete and no multi-seed estimate is available, this experiment is preliminary and is not used to support the main claims.
+\begin{table}[H]
 \centering
 \small
 \begin{tabular}{lrrrr}
 \toprule
-Method & R@10 & NDCG@10 & R@90 & Reach. \\
+Method & R@10 & NDCG@10 & R@90 & TargetSupport@100 \\
 \midrule
 CQG-Single (multimodal, seed 42) & 0.0326 & 0.0174 & 0.1154 & -- \\
 TIGER-style SID (multimodal, seed 42) & 0.0254 & 0.0137 & 0.0972 & 10.06\% \\
@@ -474,7 +477,7 @@ kNN baselines under the same SASRec reranker. These candidate-generation
 diagnostics are separate from the CE-trained standalone results in
 Table~\ref{tab:primary-comparison}.
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \small
 \begin{tabular}{lrrr}
@@ -500,7 +503,7 @@ These rows are separate from the CE-trained standalone models.}
 \label{tab:cross}
 \end{table}
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \small
 \begin{tabular}{lrr}
@@ -519,10 +522,46 @@ full-rank use SASRec reranking over top-100 candidates.}
 \label{tab:hierarchy}
 \end{table}
 
+\subsection{Paired Crossover Values}
+\label{app:crossover-values}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+ & & \multicolumn{2}{c}{R@10} & \multicolumn{2}{c}{R@50} & \multicolumn{2}{c}{R@90} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}\cmidrule(lr){7-8}
+Quartile & Users & CQG-Single & TIGER & CQG-Single & TIGER & CQG-Single & TIGER \\
+\midrule
+Q1 rare & 193 & 0.0622 & \textbf{0.0674} & 0.1865 & \textbf{0.1917} & \textbf{0.2850} & 0.2642 \\
+Q2 & 581 & \textbf{0.1773} & 0.1756 & \textbf{0.3959} & 0.3873 & \textbf{0.4923} & 0.4854 \\
+Q3 & 1,322 & \textbf{0.2519} & 0.2436 & \textbf{0.5030} & 0.4811 & \textbf{0.6006} & 0.5802 \\
+Q4 popular & 3,944 & \textbf{0.3555} & 0.3474 & \textbf{0.6331} & 0.6270 & 0.7186 & \textbf{0.7203} \\
+\midrule
+Aggregate & 6,040 & \textbf{0.3063} & 0.2992 & \textbf{0.5675} & 0.5581 & \textbf{0.6571} & 0.6525 \\
+\bottomrule
+\end{tabular}
+\caption{Paired seed-42 ML-1M diagnostic using the same 6,040 users,
+TIGER beam 200, and CQG-Single Top-200 output. Aggregate CQG-minus-TIGER
+Recall differences are 0.0071 at $K=10$ (95\% CI
+$[-0.0025,0.0169]$, $p=.149$), 0.0094 at $K=50$ (CI
+$[-0.0002,0.0190]$, $p=.056$), and 0.0046 at $K=90$ (CI
+$[-0.0041,0.0132]$, $p=.319$), from 10,000 paired user-bootstrap
+resamples. None is significant at the 0.05 level.}
+\label{tab:crossover}
+\end{table}
+
 \subsection{Computing Infrastructure}
 \label{app:infrastructure}
 
-All reported GPU experiments were run on a single NVIDIA A800 80GB PCIe GPU (81,920 MiB device memory; driver 580.82.07). The host has two Intel Xeon Gold 6348 CPUs at 2.60GHz (28 physical cores per socket, two threads per core; 112 logical CPUs) and 1.0 TiB of system memory. The operating system is Ubuntu 22.04.5 LTS with Linux kernel 4.19.90. The software environment uses Python 3.12.3, PyTorch 2.8.0+cu128, CUDA 12.8 as bundled with PyTorch, cuDNN 9.10.2, Transformers 5.13.1, NumPy 2.3.2, scikit-learn 1.9.0, and FAISS-CPU 1.14.3. Training uses bfloat16 automatic mixed precision where indicated; evaluation metrics are accumulated outside autocast.
+Experiments ran in an AutoDL container with one NVIDIA A800 80GB PCIe GPU
+(81,920 MiB device memory), 14 allocated CPU cores, and approximately 120GB
+of host-visible memory. The software environment uses Python 3.12.3,
+PyTorch 2.8.0+cu128, CUDA 12.8 as bundled with PyTorch, cuDNN 9.10.2,
+Transformers 5.13.1, NumPy 2.3.2, scikit-learn 1.9.0, and FAISS-CPU 1.14.3.
+Training uses bfloat16 automatic mixed precision where indicated; evaluation
+metrics are accumulated outside autocast.
 
 \subsection{Dataset Splits}
 \label{app:splits}
@@ -720,7 +759,7 @@ Transformer blocks with six heads, feed-forward dimension 1024, and dropout
 0.1.  A learned BOS vector starts continuous decoding.  At step \(\ell\), a
 linear head followed by \(\tanh\) produces
 \(\Delta_\ell\in\mathbb{R}^{64}\); a learned scalar controls its magnitude,
-and the cumulative query is
+the cumulative query is initialized as \(q^{(0)}=\mathbf{0}\), and
 \[
  q^{(\ell)}=\operatorname{norm}(q^{(\ell-1)}+\Delta_\ell).
 \]
@@ -744,7 +783,7 @@ history and masking all previously observed items.
 \subsection{Hyperparameters}
 \label{app:hparams}
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \small
 \begin{tabular}{lrrrrrrrl}
@@ -756,6 +795,7 @@ CQG-Single MSE & 64 & 256 & 4 & 4 & 1e-3 & 256 & 50 max. & MSE to target embeddi
 CQG-Single InfoNCE & 64 & 256 & 4 & 4 & 1e-4 & 256 & 100 max. & In-batch InfoNCE, $\tau=0.07$ \\
 CQG-Single CE & 64 & 256 & 4 & 4 & 1e-3 & 256 & 50 max. & Full-catalog softmax CE \\
 CQG-AR & 64 & 384 & 4 & 6 & 3e-4 & 1024 & 30 max. & AR residuals + full-catalog CE \\
+CQG-AR sampled CE & 64 & 384 & 4 & 6 & 3e-4 & 1024 & 30 max. & AR residuals + 256 negatives \\
 Qwen hybrid probe & 64 & -- & -- & -- & 5e-5 & 32$\times$8 & 10 & InfoNCE with projection head \\
 TIGER-style SID decoder & 64 & 384 & 4 & 6 & 1e-3 & 256 & 50K steps & Autoregressive CE over SID tokens \\
 TIGER T5/RQ-VAE reproduction & -- & -- & -- & -- & 1e-4 & 256 & 200 max. & Autoregressive CE over SID tokens \\
@@ -917,7 +957,7 @@ a single causal source of the gap. We therefore report the discrepancy for
 transparency, avoid tuning against the published test number, and label all
 measurements from this reproduction separately.
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \small
 \begin{tabular}{lrr}
@@ -946,6 +986,34 @@ The SID decoder dataloader uses the same history-target pairs as CQG-Single and 
 
 \section{Additional Ablations}
 \label{app:ablations}
+
+\subsection{Frozen-Item Objective Diagnostics}
+\label{app:loss-objectives}
+
+Under the corrected leave-one-out evaluator, full-catalog CE yields higher
+Recall@10 than MSE and in-batch InfoNCE in the frozen item space
+(Table~\ref{tab:loss}). This auxiliary objective comparison is separate from
+joint item-space training; the CE-joint diagnostic is omitted because it
+changes both the objective and the item representations.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Objective & Test R@10 & vs. SASRec \\
+\midrule
+SASRec BPR & 0.2797 & 100.0\% \\
+CQG-Single full-catalog CE & \textbf{0.3114} & 111.3\% \\
+CQG-Single MSE & 0.2425 & 86.7\% \\
+CQG-Single InfoNCE & 0.2386 & 85.3\% \\
+\bottomrule
+\end{tabular}
+\caption{Frozen-item objective landscape on ML-1M. CE and MSE are
+three-seed means under the corrected test-history protocol; InfoNCE is an
+auxiliary diagnostic.}
+\label{tab:loss}
+\end{table}
 
 \subsection{CQG-AR Decoding Depth}
 \label{app:depth}
@@ -1051,7 +1119,7 @@ use these failures as evidence that SID methods are generally weak; instead,
 they motivate careful baseline validation against published TIGER, LETTER,
 and EAGER results.
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \small
 \begin{tabular}{lll}
