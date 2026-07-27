@@ -294,22 +294,23 @@ $B$ can raise it. CQG avoids this particular beam-exclusion mechanism because
 every encoded item remains scoreable, although its finite Top-$K$ Recall is
 still determined by query quality.
 
-Table~\ref{tab:target-support-comparison} provides the matched finite-output comparison. Target-in-Output@100 is user weighted. Q1--Q4 first compute the hit rate of each distinct test-target item and then average items equally within training-frequency quartiles. TargetItemSupport@200 is the fraction of distinct held-out target items retrieved for at least one associated test instance. Under these definitions, both continuous methods support more users, every popularity quartile, and more distinct target items than the evaluated TIGER checkpoint. The earlier TIGER-only matched-resampling diagnostic is retained in Appendix~\ref{app:matched-target}. Union-of-output catalog coverage is reported separately in Appendix~\ref{app:coverage}.
+Table~\ref{tab:target-support-comparison} provides the matched finite-output comparison. TargetInOutput@100 is user weighted. Q1--Q4 first compute the hit rate of each distinct test-target item and then average items equally within training-frequency quartiles. TargetItemSupport@200 is the fraction of distinct held-out target items retrieved for at least one associated test instance. Under these definitions, both continuous methods support more users, every popularity quartile, and more distinct target items than the evaluated TIGER checkpoint. The earlier TIGER-only matched-resampling diagnostic is retained in Appendix~\ref{app:matched-target}. Union-of-output catalog coverage is reported separately in Appendix~\ref{app:coverage}.
 
 \begin{table*}[t]
 \centering
 \small
 \setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.08}
 \begin{tabular}{lrrrrrr}
 \toprule
-Method & Target-in-Output@100 & Q1 rare & Q2 & Q3 & Q4 popular & TargetItemSupport@200 \\
+Method & \shortstack{TargetInOutput\\@100} & Q1 rare & Q2 & Q3 & Q4 popular & \shortstack{TargetItemSupport\\@200} \\
 \midrule
 TIGER & 63.8\% & 22.7\% & 42.1\% & 49.7\% & 65.5\% & 75.2\% \\
 CQG-Single & \textbf{67.3\%} & \textbf{26.4\%} & \textbf{46.9\%} & \textbf{56.3\%} & \textbf{70.0\%} & \textbf{78.9\%} \\
 CQG-AR & 66.4\% & 24.4\% & 45.4\% & 54.8\% & 69.6\% & 78.8\% \\
 \bottomrule
 \end{tabular}
-\caption{Finite-output target support on ML-1M, seed 42. Target-in-Output@100 is user weighted. Q1--Q4 use the same training-frequency item-to-quartile mapping as Figures~\ref{fig:reachability} and~\ref{fig:crossover}, then compute item-balanced means over 162, 346, 584, and 781 distinct test-target items, respectively. TargetItemSupport@200 counts the fraction of all 1,873 distinct test-target items retrieved for at least one associated test instance. TIGER uses beam widths 100 and 200 for the corresponding columns; CQG uses Top-100 and Top-200 dense outputs. These quantities are empirical finite-output support, not catalog-wide scoreability.}
+\caption{ML-1M finite-output target support (seed 42). TargetInOutput@100 is user weighted. Q1--Q4 use the same training-frequency item-to-quartile mapping as Figures~\ref{fig:reachability} and~\ref{fig:crossover}, then compute item-balanced means over 162, 346, 584, and 781 distinct test-target items, respectively. TargetItemSupport@200 counts the fraction of all 1,873 distinct test-target items retrieved for at least one associated test instance. TIGER uses beam widths 100 and 200 for the corresponding columns; CQG uses Top-100 and Top-200 dense outputs. These quantities are empirical finite-output support, not catalog-wide scoreability.}
 \label{tab:target-support-comparison}
 \end{table*}
 
@@ -339,11 +340,12 @@ claim.
 
 \begin{table*}[t]
 \centering
-\scriptsize
+\small
 \setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.08}
 \begin{tabular}{llrrrrr}
 \toprule
-Method & Configuration & Params & ML-1M R@10 & ML-1M NDCG@10 & Beauty R@10 & Sports R@10 \\
+Method & Config. & Params & \shortstack{ML-1M\\R@10} & \shortstack{ML-1M\\NDCG@10} & \shortstack{Beauty\\R@10} & \shortstack{Sports\\R@10} \\
 \midrule
 SASRec & Full-rank baseline & -- & 0.2797 & 0.1535 & -- & -- \\
 TIGER & Discrete AR & 5.78M & $0.2957{\pm}0.0103$ & $0.1717{\pm}0.0064$ & $0.0474{\pm}0.0044$ & $0.0245{\pm}0.0022$ \\
@@ -351,7 +353,7 @@ CQG-Single & Single-step & 3.2M & $\mathbf{0.3114{\pm}0.0069}$ & $\mathbf{0.1814
 CQG-AR & Autoregressive ($L=3$) & 5.62M & $0.2982{\pm}0.0042$ & $0.1727{\pm}0.0020$ & $0.0571{\pm}0.0043$ & $\mathbf{0.0355{\pm}0.0004}$ \\
 \bottomrule
 \end{tabular}
-\caption{Primary comparison (mean and sample SD, seeds 42--44). ML-1M and Beauty are full-user protocol matched; Sports TIGER uses approximately 5,000 sampled users per seed and is an unpaired diagnostic. Amazon TIGER uses our hierarchical-$k$-means baseline.}
+\caption{Cross-dataset primary comparison (mean $\pm$ sample SD; seeds 42--44). ML-1M and Beauty are full-user protocol matched; Sports TIGER uses approximately 5,000 sampled users per seed and is an unpaired diagnostic. Amazon TIGER uses our hierarchical-$k$-means baseline.}
 \label{tab:primary-comparison}
 \end{table*}
 
@@ -375,15 +377,17 @@ Appendix~\ref{app:loss-objectives}.
 \begin{table}[t]
 \centering
 \small
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.08}
 \begin{tabular}{lrrr}
 \toprule
-CQG-AR objective & R@10 & NDCG@10 & R@100 \\
+Objective & R@10 & NDCG@10 & R@100 \\
 \midrule
 Full-catalog CE & $\mathbf{0.2982{\pm}0.0042}$ & $\mathbf{0.1727{\pm}0.0020}$ & $\mathbf{0.6631{\pm}0.0048}$ \\
 Sampled CE (256 negatives) & $0.2895{\pm}0.0077$ & $0.1663{\pm}0.0034$ & $0.6592{\pm}0.0104$ \\
 \bottomrule
 \end{tabular}
-\caption{Objective-control experiment on ML-1M (mean and sample SD, seeds 42--44). Reducing catalog visibility to 256 sampled negatives lowers R@10 by 0.0087 but retains competitive accuracy, so objective visibility explains part, not all, of the continuous model's behavior.}
+\caption{ML-1M objective-visibility control (mean $\pm$ sample SD; seeds 42--44). Reducing catalog visibility to 256 sampled negatives lowers R@10 by 0.0087 but retains competitive accuracy, so objective visibility explains part, not all, of the continuous model's behavior.}
 \label{tab:objective-control}
 \end{table}
 
