@@ -275,11 +275,18 @@ We compare against SASRec \citep{kang2018sasrec}, TIGER-style SID retrieval \cit
 \textbf{Model training protocol.}
 We first train a two-layer SASRec with BPR on chronological next-item pairs and select its checkpoint by full-catalog validation NDCG@10. Its 64-dimensional item embedding table is then frozen and shared by both continuous methods as the history-input table, target embedding or classifier matrix, and retrieval index. The main experiments use no textual or language-model item encoder.
 
-\textbf{CQG-Single} generates one normalized query, whereas \textbf{CQG-AR}
-autoregressively refines a cumulative query using residual updates. Both are
-trained against the same next-item target in the frozen item space. Complete
-architectures, objectives, sample construction, optimization settings, and
-checkpoint selection are provided in Appendix~\ref{app:training}.
+\textbf{CQG-Single} 
+is a four-layer, four-head causal Transformer with width 256. It directly generates one normalized query and is trained against the next-item target using full-catalog CE, MSE, or in-batch InfoNCE. \textbf{CQG-AR}
+uses a four-layer, six-head causal Transformer with width 384 to autoregres-
+% sively generate three residual query updates. Both are
+% trained against the same next-item target in the frozen item space. Complete
+% architectures, objectives, sample construction, optimization settings, and
+% checkpoint selection are provided in Appendix~\ref{app:training}.
+Each residual is fed into the next decoding step, while the cumulative query
+is updated by adding the residual and then normalizing the
+result. 
+% All steps refine the same next-item target rather than different SID levels.
+In the final configuration, only the final query receives direct full-catalog CE supervision. The multimodal Sports diagnostic instead uses a frozen fusion of collaborative and ImageNet-pretrained ResNet-18 features. Full implementation details are provided in Appendix~\ref{app:training}.
 
 \section{Results}
 
@@ -384,8 +391,8 @@ Appendix~\ref{app:loss-objectives}.
 \begin{table}[t]
 \centering
 \small
-\setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.08}
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.28}
 \resizebox{\columnwidth}{!}{%
 \begin{tabular}{lrrr}
 \toprule
