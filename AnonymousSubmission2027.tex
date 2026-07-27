@@ -346,65 +346,13 @@ Aggregate & 6,040 & \textbf{0.3063} & 0.2992 & \textbf{0.5675} & 0.5581 & \textb
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{Figures/fig2_crossover.pdf}
-\caption{Measured per-quartile Recall@$K$ curves on ML-1M, seed 42. Every point uses saved per-user output at $K\in\{10,20,\ldots,100,120,150\}$; no interpolation is used. TIGER uses beam width 200 and CQG-Single uses the same Top-200 output budget.}
+\caption{Measured per-quartile Recall@$K$ curves on ML-1M, seed 42. Light-blue shading highlights intervals in which CQG-Single exceeds TIGER. Every point uses saved per-user output at $K\in\{10,20,\ldots,100,120,150\}$; no metric point is interpolated. TIGER uses beam width 200 and CQG-Single uses the same Top-200 output budget.}
 \label{fig:crossover}
 \end{figure*}
 
-\subsection{Retrieval Quality Hierarchy}
-
-We evaluate a matched 100-candidate retrieve-and-rerank pipeline using a legacy
-MSE-trained CQG-Single checkpoint. Across ML-1M, Beauty, and Sports,
-CQG-Single followed by SASRec reranking reaches 97.7--102\% of full-rank
-SASRec Recall@10 (Table~\ref{tab:cross}). To determine whether this performance
-merely results from averaging recent item embeddings,
-Table~\ref{tab:hierarchy} compares the learned retriever with random,
-last-item kNN, and mean-of-five kNN baselines under the same SASRec reranker.
-Random retrieval fails, heuristic kNN recovers part of the signal, and learned
-query generation closes most of the remaining gap to full-rank SASRec. These
-candidate-generation diagnostics are separate from the CE-trained standalone
-results in Table~\ref{tab:primary-comparison}.
-
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{lrrr}
-\toprule
-Method & ML-1M & Beauty & Sports \\
-\midrule
-\multicolumn{4}{l}{\textit{Recall@10}} \\
-SASRec & 0.2797 & 0.0558 & 0.0390 \\
-CQG-Single MSE standalone & 0.2425 & 0.0524 & 0.0307 \\
-CQG-Single MSE + reranker & \textbf{0.2801} & \textbf{0.0569} & 0.0381 \\
-TIGER candidates + SASRec & 0.2864 & -- & -- \\
-\midrule
-\multicolumn{4}{l}{\textit{NDCG@10}} \\
-SASRec & 0.1535 & 0.0296 & 0.0197 \\
-CQG-Single MSE standalone & 0.1424 & 0.0266 & 0.0150 \\
-CQG-Single MSE + reranker & \textbf{0.1554} & \textbf{0.0308} & 0.0194 \\
-TIGER candidates + SASRec & 0.1571 & -- & -- \\
-\bottomrule
-\end{tabular}
-\caption{Candidate-generation diagnostic with a matched 100-candidate budget. CQG-Single uses the legacy MSE checkpoint; the TIGER reranking control is currently available on ML-1M only. These rows are separate from the CE standalone models.}
-\label{tab:cross}
-\end{table}
-
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{lrr}
-\toprule
-Retriever & ML-1M R@10 & Sports R@10 \\
-\midrule
-Random & 0.0252 & 0.0037 \\
-Last-item kNN & 0.2349 & 0.0311 \\
-Mean-of-5 kNN & 0.2545 & 0.0310 \\
-CQG-Single MSE + SASRec & \textbf{0.2801} & \textbf{0.0381} \\
-SASRec full-rank & 0.2797 & 0.0390 \\
-\bottomrule
-\end{tabular}
-\caption{Retrieval quality hierarchy. All retrieval methods except SASRec full-rank use SASRec reranking over top-100 candidates.}
-\label{tab:hierarchy}
-\end{table}
+Legacy MSE candidate-generation and reranking diagnostics are reported
+separately in Appendix~\ref{app:legacy-mse}; they are not results from the
+CE-trained CQG-Single or CQG-AR models used in the primary comparison.
 
 \section{Analysis}
 
@@ -547,6 +495,63 @@ TIGER-style SID (multimodal, seed 42) & 0.0254 & 0.0137 & 0.0972 & 10.06\% \\
 
 \section{Experimental Protocol and Reproducibility}
 \label{app:protocol}
+
+\subsection{Legacy MSE Candidate-Generation Diagnostics}
+\label{app:legacy-mse}
+
+We evaluate a matched 100-candidate retrieve-and-rerank pipeline using a legacy
+MSE-trained CQG-Single checkpoint. Across ML-1M, Beauty, and Sports,
+CQG-Single followed by SASRec reranking reaches 97.7--102\% of full-rank
+SASRec Recall@10 (Table~\ref{tab:cross}). Table~\ref{tab:hierarchy} further
+compares the learned retriever with random, last-item kNN, and mean-of-five
+kNN baselines under the same SASRec reranker. These candidate-generation
+diagnostics are separate from the CE-trained standalone results in
+Table~\ref{tab:primary-comparison}.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+Method & ML-1M & Beauty & Sports \\
+\midrule
+\multicolumn{4}{l}{\textit{Recall@10}} \\
+SASRec & 0.2797 & 0.0558 & 0.0390 \\
+CQG-Single MSE standalone & 0.2425 & 0.0524 & 0.0307 \\
+CQG-Single MSE + reranker & \textbf{0.2801} & \textbf{0.0569} & 0.0381 \\
+TIGER candidates + SASRec & 0.2864 & -- & -- \\
+\midrule
+\multicolumn{4}{l}{\textit{NDCG@10}} \\
+SASRec & 0.1535 & 0.0296 & 0.0197 \\
+CQG-Single MSE standalone & 0.1424 & 0.0266 & 0.0150 \\
+CQG-Single MSE + reranker & \textbf{0.1554} & \textbf{0.0308} & 0.0194 \\
+TIGER candidates + SASRec & 0.1571 & -- & -- \\
+\bottomrule
+\end{tabular}
+\caption{Legacy MSE candidate-generation diagnostic with a matched
+100-candidate budget. The TIGER reranking control is available on ML-1M only.
+These rows are separate from the CE-trained standalone models.}
+\label{tab:cross}
+\end{table}
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Retriever & ML-1M R@10 & Sports R@10 \\
+\midrule
+Random & 0.0252 & 0.0037 \\
+Last-item kNN & 0.2349 & 0.0311 \\
+Mean-of-5 kNN & 0.2545 & 0.0310 \\
+CQG-Single MSE + SASRec & \textbf{0.2801} & \textbf{0.0381} \\
+SASRec full-rank & 0.2797 & 0.0390 \\
+\bottomrule
+\end{tabular}
+\caption{Legacy MSE retrieval-quality hierarchy. All methods except SASRec
+full-rank use SASRec reranking over top-100 candidates.}
+\label{tab:hierarchy}
+\end{table}
 
 \subsection{Computing Infrastructure}
 \label{app:infrastructure}

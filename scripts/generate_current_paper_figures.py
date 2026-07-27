@@ -100,6 +100,19 @@ def figure3():
     fig, axes = plt.subplots(2, 2, figsize=(11.5, 4.7), sharex=False)
     blue, gold = "#0072B2", "#E69F00"
     for idx, (ax, (title, cqg, tiger)) in enumerate(zip(axes.flat, panels)):
+        cqg_arr = np.asarray(cqg)
+        tiger_arr = np.asarray(tiger)
+        ax.fill_between(
+            ks,
+            tiger_arr,
+            cqg_arr,
+            where=cqg_arr >= tiger_arr,
+            interpolate=True,
+            color=blue,
+            alpha=0.14,
+            linewidth=0,
+            label="CQG-Single advantage",
+        )
         ax.plot(ks, cqg, "-o", color=blue, lw=2.0, ms=3.8, label="CQG-Single")
         ax.plot(ks, tiger, "-s", color=gold, lw=2.0, ms=3.8, label="TIGER")
         ax.set_title(title, fontsize=11)
@@ -111,7 +124,7 @@ def figure3():
             ax.set_ylabel("Recall")
 
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False, bbox_to_anchor=(0.5, -0.02))
+    fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(0.5, -0.02))
     fig.tight_layout(rect=(0, 0.06, 1, 1))
     save(fig, "fig2_crossover.pdf")
 
