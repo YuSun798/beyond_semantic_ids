@@ -316,7 +316,7 @@ $B$ can raise it. CQG avoids this particular beam-exclusion mechanism because
 every encoded item remains scoreable, although its finite Top-$K$ Recall is
 still determined by query quality.
 
-Table~\ref{tab:target-support-comparison} provides the matched finite-output comparison. TargetInOutput@100 is user weighted. Q1--Q4 first compute the hit rate of each distinct test-target item and then average items equally within training-frequency quartiles. TargetItemSupport@200 is the fraction of distinct held-out target items retrieved for at least one associated test instance. Under these definitions, both continuous methods support more users, every popularity quartile, and more distinct target items than the evaluated TIGER checkpoint. The earlier TIGER-only matched-resampling diagnostic is retained in Appendix~\ref{app:matched-target}. Union-of-output catalog coverage is reported separately in Table~\ref{tab:matched-coverage}.
+Table~\ref{tab:target-support-comparison} provides the matched finite-output comparison. TargetInOutput@100 is user weighted. Q1--Q4 first compute the hit rate of each distinct test-target item and then average items equally within training-frequency quartiles. TargetItemSupport@200 is the fraction of distinct held-out target items retrieved for at least one associated test instance. Under these definitions, both continuous methods support more users, every popularity quartile, and more distinct target items than the evaluated TIGER checkpoint. The earlier TIGER-only matched-resampling diagnostic is retained in Appendix~\ref{app:matched-target}. Union-of-output catalog coverage is reported separately in Appendix Table~\ref{tab:matched-coverage}.
 
 \begin{table*}[!t]
 \centering
@@ -336,7 +336,7 @@ CQG-AR & 66.4\% & 24.4\% & 45.4\% & 54.8\% & 69.6\% & 78.8\% \\
 \label{tab:target-support-comparison}
 \end{table*}
 
-This result separates code assignment from target support: 99.4\% unique codes do not imply that every held-out target enters a finite beam. Equivalently, 36.2\% of held-out user targets do not enter the width-100 beam for their corresponding test instances; this is not a statement that 36.2\% of catalog items are never retrieved. The distinct union-of-output catalog-coverage diagnostic is reported in Table~\ref{tab:matched-coverage}.
+This result separates code assignment from target support: 99.4\% unique codes do not imply that every held-out target enters a finite beam. Equivalently, 36.2\% of held-out user targets do not enter the width-100 beam for their corresponding test instances; this is not a statement that 36.2\% of catalog items are never retrieved. The distinct union-of-output catalog-coverage diagnostic is reported in Appendix Table~\ref{tab:matched-coverage}.
 
 \subsection{Crossover Phenomenon}
 
@@ -416,39 +416,8 @@ distinct items at this cutoff. At Top-100, the two continuous methods cover
 larger on Beauty at Top-10 (75.2\%, 89.5\%, and 87.9\%), although all methods
 approach full union coverage by Top-100. These results reinforce the
 distinction among scoreability, per-user target support, and empirical catalog
-coverage.
-
-\begin{table*}[!t]
-\centering
-\footnotesize
-\setlength{\tabcolsep}{7pt}
-\renewcommand{\arraystretch}{1.00}
-\begin{tabular}{lrrrrrr}
-\toprule
-Dataset &
-\shortstack{TIGER\\Cov.@10} &
-\shortstack{TIGER\\Cov.@100} &
-\shortstack{CQG-Single\\Cov.@10} &
-\shortstack{CQG-Single\\Cov.@100} &
-\shortstack{CQG-AR\\Cov.@10} &
-\shortstack{CQG-AR\\Cov.@100} \\
-\midrule
-ML-1M & 70.1\% & 95.3\% & 69.7\% & 97.6\% & 68.7\% & 97.6\% \\
-Beauty & 75.2\% & 98.1\% & 89.5\% & 99.9\% & 87.9\% & 99.8\% \\
-Sports & -- & -- & -- & -- & -- & -- \\
-\bottomrule
-\end{tabular}
-\caption{Empirical union-of-Top-$K$ catalog coverage for seed 42. ML-1M and
-Beauty use matched output budgets, user sets, and history filtering across all
-three methods; denominators exclude padding and contain 3,416 and 12,101
-items, respectively. Sports is included to make the cross-dataset reporting
-scope explicit, but matched coverage cannot be reconstructed from the saved
-outputs: its TIGER run retained aggregate metrics for sampled users without
-ranked item lists, and its CQG-Single run retained aggregate metrics only.
-This output-union metric is distinct from per-user TargetSupport and
-catalog-wide scoreability.}
-\label{tab:matched-coverage}
-\end{table*}
+coverage; the full table is reported with the crossover diagnostics in
+Appendix~\ref{app:crossover-values}.
 
 \paragraph{Effect of Autoregressive Refinement.}
 Increasing CQG-AR depth from one to four steps does not monotonically improve
@@ -644,7 +613,7 @@ full-rank use SASRec reranking over top-100 candidates.}
 \label{tab:hierarchy}
 \end{table}
 
-\subsection{Paired Crossover Values}
+\subsection{Crossover and Output-Coverage Diagnostics}
 \label{app:crossover-values}
 
 \begin{table}[H]
@@ -683,6 +652,38 @@ mixed-beam diagnostic, not the final protocol-matched estimate. SD denotes
 sample standard deviation across six training seeds. Figure~\ref{fig:crossover}
 remains a seed-42 matched-budget illustration.}
 \label{tab:seed-expansion-preview}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{7pt}
+\renewcommand{\arraystretch}{1.00}
+\begin{tabular}{lrrrrrr}
+\toprule
+Dataset &
+\shortstack{TIGER\\Cov.@10} &
+\shortstack{TIGER\\Cov.@100} &
+\shortstack{CQG-Single\\Cov.@10} &
+\shortstack{CQG-Single\\Cov.@100} &
+\shortstack{CQG-AR\\Cov.@10} &
+\shortstack{CQG-AR\\Cov.@100} \\
+\midrule
+ML-1M & 70.1\% & 95.3\% & 69.7\% & 97.6\% & 68.7\% & 97.6\% \\
+Beauty & 75.2\% & 98.1\% & 89.5\% & 99.9\% & 87.9\% & 99.8\% \\
+Sports & -- & -- & -- & -- & -- & -- \\
+\bottomrule
+\end{tabular}
+\caption{Empirical union-of-Top-$K$ catalog coverage for seed 42. ML-1M and
+Beauty use matched output budgets, user sets, and history filtering across all
+three methods; denominators exclude padding and contain 3,416 and 12,101
+items, respectively. Sports is included to make the cross-dataset reporting
+scope explicit, but matched coverage cannot be reconstructed from the saved
+outputs: its TIGER run retained aggregate metrics for sampled users without
+ranked item lists, and its CQG-Single run retained aggregate metrics only.
+This output-union metric is distinct from per-user TargetSupport and
+catalog-wide scoreability.}
+\label{tab:matched-coverage}
 \end{table}
 
 \begin{table}[H]
