@@ -42,16 +42,25 @@ def figure2():
         "Q4 (popular)\n$n$=3,944 (65.3%)",
     ]
     methods = [
-        ("TIGER (overall 63.8%)", [24.352, 46.988, 56.051, 70.766], "#E69F00"),
-        ("CQG-Single (overall 67.3%)", [29.534, 51.119, 61.876, 73.352], "#0072B2"),
-        ("CQG-AR (overall 66.4%)", [26.425, 49.742, 60.514, 72.769], "#009E73"),
+        ("TIGER", [24.352, 46.988, 56.051, 70.766], "#E69F00", ""),
+        ("CQG-Single", [29.534, 51.119, 61.876, 73.352], "#0072B2", "//"),
+        ("CQG-AR", [26.425, 49.742, 60.514, 72.769], "#009E73", "\\\\"),
     ]
     x = np.arange(len(labels))
     fig, ax = plt.subplots(figsize=(7.2, 5.4))
     width = 0.24
-    for method_index, (method, values, color) in enumerate(methods):
+    for method_index, (method, values, color, hatch) in enumerate(methods):
         offset = (method_index - 1) * width
-        bars = ax.bar(x + offset, values, width=width, color=color, label=method)
+        bars = ax.bar(
+            x + offset,
+            values,
+            width=width,
+            color=color,
+            label=method,
+            hatch=hatch,
+            edgecolor="white" if hatch else color,
+            linewidth=0.7,
+        )
         for bar, value in zip(bars, values):
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
@@ -63,6 +72,19 @@ def figure2():
                 fontweight="bold",
                 color="black",
             )
+    ax.axhline(63.775, color="#9A6700", lw=2.0, ls="--", zorder=0)
+    ax.text(
+        0.02,
+        65.3,
+        "TIGER finite-beam reachability limit: 63.8%",
+        transform=ax.get_yaxis_transform(),
+        ha="left",
+        va="bottom",
+        fontsize=9.5,
+        fontweight="bold",
+        color="#805500",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.88, "pad": 1.5},
+    )
     ax.set_title("Matched Top-100 Target Support (ML-1M, seed 42)",
                  fontsize=14, fontweight="bold")
     ax.set_ylabel("TargetInOutput@100 (%)", fontsize=14, color="black")
@@ -72,7 +94,14 @@ def figure2():
     ax.set_ylim(0, 100)
     ax.grid(axis="y", alpha=0.15)
     ax.set_axisbelow(True)
-    ax.legend(loc="upper left", frameon=False, fontsize=9.5)
+    ax.legend(
+        title="Overall: TIGER 63.8%  |  Single 67.3%  |  AR 66.4%",
+        loc="upper left",
+        frameon=False,
+        fontsize=9.5,
+        title_fontsize=9.5,
+        ncol=3,
+    )
     ax.spines[["top", "right"]].set_visible(False)
     save(fig, "fig3_reachability.pdf")
 
