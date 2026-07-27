@@ -251,16 +251,7 @@ results are treated as within-paper diagnostics.}
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.9\columnwidth]{Figures/fig3_reachability.pdf}
-\caption{Matched Top-100 target support by held-out target popularity on
-ML-1M, seed 42. Bars report user-weighted TargetInOutput@100 for TIGER,
-CQG-Single, and CQG-AR; labels give each quartile's user count and test-set
-share. TIGER uses a width-100 beam and CQG uses its Top-100 dense output.
-Overall values across the same 6,040 users are 63.8\%, 67.3\%, and 66.4\%,
-respectively. The dashed line marks the TIGER width-100 finite-beam
-reachability limit (63.8\% overall); CQG-Single and CQG-AR are distinguished
-by both color and hatching. The same training-frequency item-to-quartile
-mapping is used in Figure~\ref{fig:crossover} and
-Table~\ref{tab:crossover}.}
+\caption{Matched Top-100 target support on ML-1M (seed 42), stratified by held-out target popularity. Bars show user-weighted TargetInOutput@100 under a matched output budget: TIGER uses beam width 100, while CQG-Single and CQG-AR use dense Top-100 retrieval. The dashed line marks TIGER's overall finite-beam support of 63.8\%. All analyses use the same 6,040 users and popularity-quartile mapping as Figure~\ref{fig:crossover} and Table~\ref{tab:crossover}.}
 \label{fig:reachability}
 \end{figure}
 
