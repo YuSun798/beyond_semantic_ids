@@ -455,7 +455,7 @@ continuous refinements do not yield a monotonic R@10 or NDCG@10 improvement.}
 \paragraph{Beam-width sensitivity.}
 For the seed-42 ML-1M TIGER checkpoint, increasing beam width from 100 to 200 raises TargetSupport from 63.8\% to 73.5\% and union catalog coverage from 95.3\% to 99.3\%. The corresponding full-user decoding time approximately doubles. Wider search therefore relaxes the observed support limitation substantially; our evidence supports a finite-compute trade-off, not an architecture-invariant catalog ceiling.
 
-\section{Discussion and Limitations}
+\section{Discussion}
 
 \paragraph{Interpretation of the crossover.}
 The Crossover Phenomenon is an operating-point-dependent empirical pattern
@@ -481,7 +481,7 @@ remains competitive with the three-step control. The resulting latency,
 memory, index-update cost, and cold-item accuracy have not been measured at
 production scale.
 
-\paragraph{Limitations.}
+\section{Limitation}
 Our evidence is specific to the evaluated model--search--compute
 configurations. Wider beams substantially raise TIGER target support, and our
 hierarchical-$k$-means TIGER-style baseline is weaker than published SID
