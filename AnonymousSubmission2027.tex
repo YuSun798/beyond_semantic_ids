@@ -310,12 +310,12 @@ empirical pattern rather than a universal dominance claim.
 \setlength{\tabcolsep}{5pt}
 \begin{tabular}{llrrrrr}
 \toprule
-Output interface & Method & Params & ML-1M R@10 & ML-1M NDCG@10 & Beauty R@10 & Sports R@10 \\
+Method & Configuration & Params & ML-1M R@10 & ML-1M NDCG@10 & Beauty R@10 & Sports R@10 \\
 \midrule
-Full-rank baseline & SASRec & -- & 0.2797 & 0.1535 & -- & -- \\
-Discrete AR & TIGER-style SID & 5.78M & $0.2957{\pm}0.0103$ & $0.1717{\pm}0.0064$ & $0.0474{\pm}0.0044$ & $0.0245{\pm}0.0022$ \\
-Continuous single-step & CQG-Single & 3.2M & $\mathbf{0.3114{\pm}0.0069}$ & $\mathbf{0.1814{\pm}0.0070}$ & $\mathbf{0.0597{\pm}0.0046}$ & $0.0353{\pm}0.0014$ \\
-Continuous AR & CQG-AR ($L=3$) & 5.62M & $0.2982{\pm}0.0042$ & $0.1727{\pm}0.0020$ & $0.0571{\pm}0.0043$ & $\mathbf{0.0355{\pm}0.0004}$ \\
+SASRec & Full-rank baseline & -- & 0.2797 & 0.1535 & -- & -- \\
+TIGER & Discrete AR & 5.78M & $0.2957{\pm}0.0103$ & $0.1717{\pm}0.0064$ & $0.0474{\pm}0.0044$ & $0.0245{\pm}0.0022$ \\
+CQG-Single & Single-step & 3.2M & $\mathbf{0.3114{\pm}0.0069}$ & $\mathbf{0.1814{\pm}0.0070}$ & $\mathbf{0.0597{\pm}0.0046}$ & $0.0353{\pm}0.0014$ \\
+CQG-AR & Autoregressive ($L=3$) & 5.62M & $0.2982{\pm}0.0042$ & $0.1727{\pm}0.0020$ & $0.0571{\pm}0.0043$ & $\mathbf{0.0355{\pm}0.0004}$ \\
 \bottomrule
 \end{tabular}
 \caption{Primary comparison (mean and sample SD, seeds 42--44). ML-1M and Beauty are full-user protocol matched; Sports TIGER uses approximately 5,000 sampled users per seed and is an unpaired diagnostic. Amazon TIGER uses our hierarchical-$k$-means baseline.}
