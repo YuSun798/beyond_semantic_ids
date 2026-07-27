@@ -403,25 +403,8 @@ R@10 from 0.2982 to 0.2895 while retaining performance close to the
 TIGER-style baseline. Thus training-time catalog visibility explains part,
 but not all, of the observed behavior; our architecture-level claim is
 limited to eliminating discrete code lookup and finite-beam exclusion.
-The broader frozen-item objective comparison is reported in
-Appendix~\ref{app:loss-objectives}.
-
-\begin{table}[!t]
-\centering
-\footnotesize
-\setlength{\tabcolsep}{4pt}
-\renewcommand{\arraystretch}{1.00}
-\begin{tabular}{lrrr}
-\toprule
-Objective & R@10 & NDCG@10 & R@100 \\
-\midrule
-Full-catalog CE & $\mathbf{0.2982{\pm}0.0042}$ & $\mathbf{0.1727{\pm}0.0020}$ & $\mathbf{0.6631{\pm}0.0048}$ \\
-Sampled CE (256 negatives) & $0.2895{\pm}0.0077$ & $0.1663{\pm}0.0034$ & $0.6592{\pm}0.0104$ \\
-\bottomrule
-\end{tabular}
-\caption{ML-1M objective-visibility control (mean $\pm$ sample SD; seeds 42--44). Reducing catalog visibility to 256 sampled negatives lowers R@10 by 0.0087 but retains competitive accuracy, so objective visibility explains part, not all, of the continuous model's behavior.}
-\label{tab:objective-control}
-\end{table}
+The sampled-negative control and broader frozen-item objective comparison are
+reported in Appendix~\ref{app:loss-objectives}.
 
 \paragraph{Scoreability versus empirical output coverage.}
 Catalog-wide scoreability does not imply that every item appears in a finite
@@ -1133,6 +1116,21 @@ The SID decoder dataloader uses the same history-target pairs as CQG-Single and 
 
 \subsection{Frozen-Item Objective Diagnostics}
 \label{app:loss-objectives}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+Objective & R@10 & NDCG@10 & R@100 \\
+\midrule
+Full-catalog CE & $\mathbf{0.2982{\pm}0.0042}$ & $\mathbf{0.1727{\pm}0.0020}$ & $\mathbf{0.6631{\pm}0.0048}$ \\
+Sampled CE (256 negatives) & $0.2895{\pm}0.0077$ & $0.1663{\pm}0.0034$ & $0.6592{\pm}0.0104$ \\
+\bottomrule
+\end{tabular}
+\caption{ML-1M objective-visibility control (mean $\pm$ sample SD; seeds 42--44). Reducing catalog visibility to 256 sampled negatives lowers R@10 by 0.0087 but retains competitive accuracy, so objective visibility explains part, not all, of the continuous model's behavior.}
+\label{tab:objective-control}
+\end{table}
 
 Under the corrected leave-one-out evaluator, full-catalog CE yields higher
 Recall@10 than MSE and in-batch InfoNCE in the frozen item space
