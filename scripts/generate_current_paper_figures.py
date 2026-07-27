@@ -41,42 +41,38 @@ def figure2():
         "Q3\n$n$=1,322 (21.9%)",
         "Q4 (popular)\n$n$=3,944 (65.3%)",
     ]
-    values = [24.4, 47.0, 56.1, 70.8]
-    overall = 63.8
-    x = np.arange(len(values))
+    methods = [
+        ("TIGER (overall 63.8%)", [24.352, 46.988, 56.051, 70.766], "#E69F00"),
+        ("CQG-Single (overall 67.3%)", [29.534, 51.119, 61.876, 73.352], "#0072B2"),
+        ("CQG-AR (overall 66.4%)", [26.425, 49.742, 60.514, 72.769], "#009E73"),
+    ]
+    x = np.arange(len(labels))
     fig, ax = plt.subplots(figsize=(7.2, 5.4))
-    bars = ax.bar(x, values, width=0.48, color="#E69F00")
-    ax.axhline(overall, color="#0072B2", lw=2.2, ls="--", zorder=0)
-    ax.text(
-        3.48,
-        overall + 1.8,
-        "Overall 63.8% ($n$=6,040)",
-        ha="right",
-        va="bottom",
-        fontsize=12.5,
-        fontweight="bold",
-        color="#0072B2",
-        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.82, "pad": 1.5},
-    )
-    ax.set_title("TIGER-style SID (beam width 100)", fontsize=15, fontweight="bold")
-    ax.set_ylabel("Target Support (%)", fontsize=16, color="black")
+    width = 0.24
+    for method_index, (method, values, color) in enumerate(methods):
+        offset = (method_index - 1) * width
+        bars = ax.bar(x + offset, values, width=width, color=color, label=method)
+        for bar, value in zip(bars, values):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                value + 1.4,
+                f"{value:.1f}",
+                ha="center",
+                va="bottom",
+                fontsize=8.5,
+                fontweight="bold",
+                color="black",
+            )
+    ax.set_title("Matched Top-100 Target Support (ML-1M, seed 42)",
+                 fontsize=14, fontweight="bold")
+    ax.set_ylabel("TargetInOutput@100 (%)", fontsize=14, color="black")
     ax.set_xticks(x, labels, fontsize=10, color="black")
     ax.set_yticks([0, 25, 50, 75, 100])
-    ax.tick_params(axis="y", labelsize=13, colors="black")
+    ax.tick_params(axis="y", labelsize=11, colors="black")
     ax.set_ylim(0, 100)
     ax.grid(axis="y", alpha=0.15)
     ax.set_axisbelow(True)
-    for bar, value in zip(bars, values):
-        ax.text(
-            bar.get_x() + bar.get_width() / 2,
-            value + 2.2,
-            f"{value:.1f}%",
-            ha="center",
-            va="bottom",
-            fontsize=14,
-            fontweight="bold",
-            color="black",
-        )
+    ax.legend(loc="upper left", frameon=False, fontsize=9.5)
     ax.spines[["top", "right"]].set_visible(False)
     save(fig, "fig3_reachability.pdf")
 

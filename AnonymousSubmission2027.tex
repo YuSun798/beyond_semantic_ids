@@ -251,12 +251,13 @@ results are treated as within-paper diagnostics.}
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.9\columnwidth]{Figures/fig3_reachability.pdf}
-\caption{TIGER-style SID target support by held-out target popularity on
-ML-1M, seed 42, beam width 100. Bars report the user-weighted Q1--Q4 hit rates
-and labels give each quartile's user count and test-set share. The same
-training-frequency item-to-quartile mapping is used in
-Figure~\ref{fig:crossover} and Table~\ref{tab:crossover}. The dashed line is
-the overall TargetSupport@100 of 63.8\% across all 6,040 users.}
+\caption{Matched Top-100 target support by held-out target popularity on
+ML-1M, seed 42. Bars report user-weighted TargetInOutput@100 for TIGER,
+CQG-Single, and CQG-AR; labels give each quartile's user count and test-set
+share. TIGER uses a width-100 beam and CQG uses its Top-100 dense output.
+Overall values across the same 6,040 users are 63.8\%, 67.3\%, and 66.4\%,
+respectively. The same training-frequency item-to-quartile mapping is used in
+Figure~\ref{fig:crossover} and Table~\ref{tab:crossover}.}
 \label{fig:reachability}
 \end{figure}
 
@@ -284,7 +285,13 @@ checkpoint selection are provided in Appendix~\ref{app:training}.
 
 \subsection{Finite-Beam Reachability Ceiling}
 
-For a fixed SID model and beam width $B$, target support is the fraction of test users whose held-out target occurs anywhere in the decoded beam. On ML-1M, the canonical seed-42 TIGER-style model has TargetSupport@100 of 63.8\%. This is a per-user quantity closely related to Recall@100; it is not the fraction of catalog items retrieved. Figure~\ref{fig:reachability} preserves the full TIGER popularity breakdown, including the overall mean and the number of users in each quartile.
+For a fixed model and output budget $B$, target support is the fraction of test
+users whose held-out target occurs anywhere in the returned list. On ML-1M,
+the seed-42 TargetInOutput@100 values are 63.8\% for TIGER, 67.3\% for
+CQG-Single, and 66.4\% for CQG-AR. This is a per-user quantity closely related
+to Recall@100; it is not the fraction of catalog items retrieved.
+Figure~\ref{fig:reachability} reports the matched popularity breakdown and
+user counts.
 
 For this fixed model--search pair, TargetSupport@$B$ is a realized ceiling on
 the Recall of any downstream reranker restricted to the decoded beam: a target
@@ -996,9 +1003,10 @@ The SID decoder dataloader uses the same history-target pairs as CQG-Single and 
 
 Under the corrected leave-one-out evaluator, full-catalog CE yields higher
 Recall@10 than MSE and in-batch InfoNCE in the frozen item space
-(Table~\ref{tab:loss}). This auxiliary objective comparison is separate from
-joint item-space training; the CE-joint diagnostic is omitted because it
-changes both the objective and the item representations.
+(Table~\ref{tab:loss}). Figure~\ref{fig:ce-mse} restores the broader diagnostic
+from the earlier manuscript, including CE-joint for completeness. CE-joint is
+not a controlled loss-only comparison because it changes both the objective
+and the item representations.
 
 \begin{table}[H]
 \centering
@@ -1018,6 +1026,16 @@ three-seed means under the corrected test-history protocol; InfoNCE is an
 auxiliary diagnostic.}
 \label{tab:loss}
 \end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\columnwidth]{Figures/fig5_ce_mse.pdf}
+\caption{Auxiliary objective and item-space diagnostic on ML-1M. MSE,
+InfoNCE, and full-catalog CE in Table~\ref{tab:loss} keep the SASRec item
+embedding space frozen. CE-joint updates the item representations and is shown
+only as a separate diagnostic, not as a controlled loss-only comparison.}
+\label{fig:ce-mse}
+\end{figure}
 
 \subsection{CQG-AR Decoding Depth}
 \label{app:depth}
