@@ -379,6 +379,7 @@ Appendix~\ref{app:loss-objectives}.
 \small
 \setlength{\tabcolsep}{5pt}
 \renewcommand{\arraystretch}{1.08}
+\resizebox{\columnwidth}{!}{%
 \begin{tabular}{lrrr}
 \toprule
 Objective & R@10 & NDCG@10 & R@100 \\
@@ -387,6 +388,7 @@ Full-catalog CE & $\mathbf{0.2982{\pm}0.0042}$ & $\mathbf{0.1727{\pm}0.0020}$ & 
 Sampled CE (256 negatives) & $0.2895{\pm}0.0077$ & $0.1663{\pm}0.0034$ & $0.6592{\pm}0.0104$ \\
 \bottomrule
 \end{tabular}
+}
 \caption{ML-1M objective-visibility control (mean $\pm$ sample SD; seeds 42--44). Reducing catalog visibility to 256 sampled negatives lowers R@10 by 0.0087 but retains competitive accuracy, so objective visibility explains part, not all, of the continuous model's behavior.}
 \label{tab:objective-control}
 \end{table}
