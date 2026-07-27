@@ -457,21 +457,80 @@ catalog-wide scoreability.}
 \label{tab:matched-coverage}
 \end{table*}
 
+\paragraph{Effect of Autoregressive Refinement.}
+Increasing CQG-AR depth from one to four steps does not monotonically improve
+shallow retrieval. R@10 varies only from 0.2909 to 0.2944, and the single-step
+boundary ($L=1$) is competitive with the three-step architecture-matched
+control ($L=3$). Additional refinement is more visible at the deeper cutoff:
+R@100 increases from 0.6550 at $L=1$ to 0.6697 at $L=4$, although the trend is
+not monotonic at every intermediate depth. These results suggest that serial
+continuous refinement may adjust deeper candidate ordering without reliably
+improving shallow accuracy. We therefore use $L=3$ primarily to match the
+three-level SID decoding structure, rather than because three continuous
+outputs are intrinsically necessary.
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabular}{lrrr}
+\toprule
+Depth & R@10 & NDCG@10 & R@100 \\
+\midrule
+$L=1$ & 0.2924 & \textbf{0.1719} & 0.6550 \\
+$L=2$ & 0.2909 & 0.1688 & 0.6525 \\
+$L=3$ & 0.2914 & 0.1667 & 0.6619 \\
+$L=4$ & \textbf{0.2944} & 0.1717 & \textbf{0.6697} \\
+\bottomrule
+\end{tabular}
+\caption{Single-seed CQG-AR decoding-depth ablation on ML-1M. All rows use
+seed 42, full-catalog CE, and intermediate-loss weight 0.3. Additional
+continuous refinements do not yield a monotonic R@10 or NDCG@10 improvement.}
+\label{tab:ar-depth}
+\end{table}
+
 \paragraph{Beam-width sensitivity.}
 For the seed-42 ML-1M TIGER checkpoint, increasing beam width from 100 to 200 raises TargetSupport from 63.8\% to 73.5\% and union catalog coverage from 95.3\% to 99.3\%. The corresponding full-user decoding time approximately doubles. Wider search therefore relaxes the observed support limitation substantially; our evidence supports a finite-compute trade-off, not an architecture-invariant catalog ceiling.
 
 \FloatBarrier
-\section{Discussion}
+\section{Discussion and Limitations}
 
-\textbf{Why the crossover matters.}
-The Crossover Phenomenon describes a depth-dependent empirical pattern rather than a universal ranking theorem. At R@10, concentrated autoregressive probability can help; deeper in the list, finite beam support can become a bottleneck in the evaluated systems. CQG-Single and CQG-AR both keep every encoded item scoreable, but their query quality depends on embedding alignment. CQG-Single has the highest mean ML-1M R@10 in the current three-seed comparison, whereas CQG-AR approximately matches the TIGER-style mean and has a smaller observed sample SD across these runs; this indicates that continuous output can preserve autoregressive modeling without requiring SID tokens, but autoregressive refinement is not automatically superior to one-step generation.
+\paragraph{Interpretation of the crossover.}
+The Crossover Phenomenon is an operating-point-dependent empirical pattern
+rather than a universal ranking theorem. On ML-1M, TIGER is numerically
+stronger for rare targets at some shallow and intermediate cutoffs, whereas
+CQG-Single is generally stronger for more popular targets and at several
+deeper cutoffs; none of the aggregate paired ML-1M differences is significant
+at the 0.05 level. Beauty does not reproduce the rare-item shallow advantage,
+further limiting claims of universality. These results support a conditional
+tradeoff between concentrated finite-beam decoding and continuous retrieval,
+not universal dominance by either interface.
 
-\textbf{Practical implications.}
-For static catalogs with strong shallow-retrieval accuracy requirements, SID methods remain competitive. Continuous-query retrieval offers a simpler score-and-index interface and can coexist with existing rankers as a recall stage. The depth ablation further shows that a single continuous output is competitive with multi-step continuous refinement in our setting, so three-level generation is useful as an architecture-matched control but is not required for the highest-mean continuous-query result reported here. This removes serial refinement steps in addition to avoiding SID beam expansion; whether the resulting interface yields better end-to-end latency, memory use, or cold-item accuracy at production scale remains to be measured.
+\paragraph{Practical implications.}
+Continuous-query retrieval removes discrete code lookup and finite-beam
+exclusion, and can use exact scoring or ANN retrieval without changing the
+output dimensionality when encoded items are inserted. CQG-Single has the
+highest mean shallow accuracy in the current three-seed comparison, while
+CQG-AR shows that autoregressive modeling can be retained with continuous
+outputs. However, additional continuous refinement does not monotonically
+improve shallow accuracy, and the single-step boundary remains competitive
+with the three-step control. The resulting latency, memory, index-update cost,
+and cold-item accuracy have not been measured at production scale.
 
-\section{Limitations}
-
-Our study has several limitations. Matched-target subsampling reduces unequal target counts across popularity groups but remains observational rather than a causal intervention on user demand. The completed Beauty comparison confirms a continuous-method advantage rather than the ML-1M rare-item shallow crossover, so the crossover pattern is not universal across datasets. Our TIGER-style comparison uses hierarchical k-means over SASRec embeddings, and our closer T5/RQ-VAE recipe does not match the reference implementation's reported Beauty accuracy, as documented in Appendix~\ref{app:tiger_recipe}. Thus, its absolute effect sizes must not be generalized to a fully reproduced TIGER checkpoint. Neural RQ-VAE variants were unstable in our implementation (Appendix~\ref{app:tokenization}), and auxiliary LLM-backbone experiments did not improve alignment with the frozen collaborative item space (Appendix~\ref{app:llm}). The current CQG-AR residual steps share one next-item target and provide only limited improvement over its $L=1$ boundary. Full-catalog CE costs $O(N)$ per update and has only been evaluated on the reported catalog sizes; million-item training, ANN latency, memory, and dynamic-catalog accuracy remain unmeasured. Finally, CQG-Single and CQG-AR inherit preference-relevant errors in the frozen item space.
+\paragraph{Limitations.}
+Our evidence is specific to the evaluated model--search--compute
+configurations. Wider beams substantially raise TIGER target support, and our
+hierarchical-$k$-means TIGER-style baseline is weaker than published SID
+systems. The closer T5/RQ-VAE Beauty reproduction also does not match the
+reference implementation's ranking accuracy, so its absolute coverage effect
+must not be generalized to a fully reproduced TIGER checkpoint. Matched-target
+analysis remains observational rather than a causal intervention on
+popularity, and the Beauty significance results use paired users from seed-42
+checkpoints without capturing training-seed uncertainty. Full-catalog CE costs
+$O(N)$ per update and has only been evaluated on the reported catalog sizes;
+million-item training, ANN latency, memory, and dynamic-catalog accuracy remain
+open.
 
 \section{Conclusion}
 
@@ -1060,38 +1119,6 @@ embedding space frozen. CE-joint updates the item representations and is shown
 only as a separate diagnostic, not as a controlled loss-only comparison.}
 \label{fig:ce-mse}
 \end{figure}
-
-\subsection{CQG-AR Decoding Depth}
-\label{app:depth}
-
-Table~\ref{tab:ar-depth} varies CQG-AR depth while holding the seed,
-architecture, data, objective, and intermediate-loss weight fixed. Increasing
-$L$ from one to four does not monotonically improve shallow accuracy: all four
-R@10 values lie within 0.0035, and $L=1$ is competitive with the three-step
-SID-matched control. Thus a single continuous query retains most of the useful
-retrieval signal in this frozen item space and removes two serial refinement
-rounds relative to $L=3$. This is an architectural observation, not a measured
-end-to-end latency claim.
-
-\begin{table}[!htbp]
-\centering
-\scriptsize
-\setlength{\tabcolsep}{8pt}
-\begin{tabular}{lrrr}
-\toprule
-Depth & R@10 & NDCG@10 & R@100 \\
-\midrule
-$L=1$ & 0.2924 & \textbf{0.1719} & 0.6550 \\
-$L=2$ & 0.2909 & 0.1688 & 0.6525 \\
-$L=3$ & 0.2914 & 0.1667 & 0.6619 \\
-$L=4$ & \textbf{0.2944} & 0.1717 & \textbf{0.6697} \\
-\bottomrule
-\end{tabular}
-\caption{Single-seed CQG-AR decoding-depth ablation on ML-1M. All rows use
-seed 42, full-catalog CE, and intermediate-loss weight 0.3. Additional
-continuous refinements do not yield a monotonic R@10 or NDCG@10 improvement.}
-\label{tab:ar-depth}
-\end{table}
 
 \subsection{Temperature Ablation}
 \label{app:temperature}
