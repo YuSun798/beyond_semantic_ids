@@ -270,7 +270,7 @@ We use leave-one-out evaluation: the last item is held out for testing, the seco
 \label{fig:crossover}
 \end{figure*}
 \textbf{Baselines.}
-We compare against SASRec \citep{kang2018sasrec}, TIGER-style SID retrieval \citep{rajput2023tiger}, and reported SID results from TIGER, LETTER, and EAGER where protocols permit contextual comparison. We also include non-learned dense retrieval baselines: random retrieval, last-item kNN, and mean-of-5 kNN.
+We compare against SASRec \citep{kang2018sasrec}, TIGER-style SID retrieval \citep{rajput2023tiger}, and reported SID results from TIGER, LETTER, and EAGER where protocols allow contextual comparison. We also include non-learned dense retrieval baselines: random retrieval, last-item kNN, and mean-of-5 kNN.
 
 \textbf{Model training protocol.}
 We first train a two-layer SASRec with BPR on chronological next-item pairs and select its checkpoint by full-catalog validation NDCG@10. Its 64-dimensional item embedding table is then frozen and shared by both continuous methods as the history-input table, target embedding or classifier matrix, and retrieval index. The main experiments use no textual or language-model item encoder.
@@ -286,7 +286,7 @@ Each residual is fed into the next decoding step, while the cumulative query
 is updated by adding the residual and then normalizing the
 result. 
 % All steps refine the same next-item target rather than different SID levels.
-In the final configuration, only the final query receives direct full-catalog CE supervision. The multimodal Sports diagnostic instead uses a frozen fusion of collaborative and ImageNet-pretrained ResNet-18 features. Full implementation details are provided in Appendix~\ref{app:training}.
+In the final configuration, only the final query receives direct full-catalog CE supervision. The multimodal Sports diagnostic instead uses a frozen fusion of collaborative and ImageNet-pretrained ResNet-18 features. The complete details of the implementation are provided in the Appendix~\ref{app:training}.
 
 \section{Results}
 
