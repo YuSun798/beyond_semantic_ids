@@ -35,30 +35,37 @@ def save(fig, name):
 
 
 def figure2():
-    labels = ["Q1 (rare)\n$n$=192", "Q2\n$n$=582", "Q3\n$n$=1,321", "Q4 (popular)\n$n$=3,945"]
+    labels = [
+        "Q1 (rare)\n$n$=192 (3.2%)",
+        "Q2\n$n$=582 (9.6%)",
+        "Q3\n$n$=1,321 (21.9%)",
+        "Q4 (popular)\n$n$=3,945 (65.3%)",
+    ]
     values = [24.0, 47.1, 56.1, 70.8]
+    overall = 63.8
     x = np.arange(len(values))
     fig, ax = plt.subplots(figsize=(7.2, 5.4))
     bars = ax.bar(x, values, width=0.48, color="#E69F00")
+    ax.axhline(overall, color="#0072B2", lw=2.2, ls="--", zorder=0)
     ax.text(
-        0.985,
-        0.96,
-        "TIGER-style SID (beam width 100)",
-        transform=ax.transAxes,
+        3.48,
+        overall + 1.8,
+        "Overall 63.8% ($n$=6,040)",
         ha="right",
-        va="top",
-        fontsize=15,
+        va="bottom",
+        fontsize=12.5,
         fontweight="bold",
-        color="black",
+        color="#0072B2",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.82, "pad": 1.5},
     )
+    ax.set_title("TIGER-style SID (beam width 100)", fontsize=15, fontweight="bold")
     ax.set_ylabel("Beam Search Reachability (%)", fontsize=16, color="black")
-    ax.set_xticks(x, labels, fontsize=13, color="black")
+    ax.set_xticks(x, labels, fontsize=10, color="black")
     ax.set_yticks([0, 25, 50, 75, 100])
     ax.tick_params(axis="y", labelsize=13, colors="black")
     ax.set_ylim(0, 100)
     ax.grid(axis="y", alpha=0.15)
     ax.set_axisbelow(True)
-    ax.legend([bars], ["TIGER"], loc="upper left", frameon=False, fontsize=14)
     for bar, value in zip(bars, values):
         ax.text(
             bar.get_x() + bar.get_width() / 2,
