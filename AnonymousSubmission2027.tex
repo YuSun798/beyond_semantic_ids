@@ -318,11 +318,11 @@ still determined by query quality.
 
 Table~\ref{tab:target-support-comparison} provides the matched finite-output comparison. TargetInOutput@100 is user weighted. Q1--Q4 first compute the hit rate of each distinct test-target item and then average items equally within training-frequency quartiles. TargetItemSupport@200 is the fraction of distinct held-out target items retrieved for at least one associated test instance. Under these definitions, both continuous methods support more users, every popularity quartile, and more distinct target items than the evaluated TIGER checkpoint. The earlier TIGER-only matched-resampling diagnostic is retained in Appendix~\ref{app:matched-target}. Union-of-output catalog coverage is reported separately in Table~\ref{tab:matched-coverage}.
 
-\begin{table*}[t]
+\begin{table*}[!t]
 \centering
-\small
+\footnotesize
 \setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.08}
+\renewcommand{\arraystretch}{1.00}
 \begin{tabular}{lrrrrrr}
 \toprule
 Method & \shortstack{TargetInOutput\\@100} & Q1 rare & Q2 & Q3 & Q4 popular & \shortstack{TargetItemSupport\\@200} \\
@@ -364,11 +364,11 @@ its TIGER runs use sampled users. We therefore interpret crossover as an
 operating-point-dependent empirical pattern rather than a universal dominance
 claim.
 
-\begin{table*}[t]
+\begin{table*}[!t]
 \centering
-\small
+\footnotesize
 \setlength{\tabcolsep}{5pt}
-\renewcommand{\arraystretch}{1.08}
+\renewcommand{\arraystretch}{1.00}
 \begin{tabular}{llrrrrr}
 \toprule
 Method & Config. & Params & \shortstack{ML-1M\\R@10} & \shortstack{ML-1M\\NDCG@10} & \shortstack{Beauty\\R@10} & \shortstack{Sports\\R@10} \\
@@ -406,11 +406,11 @@ limited to eliminating discrete code lookup and finite-beam exclusion.
 The broader frozen-item objective comparison is reported in
 Appendix~\ref{app:loss-objectives}.
 
-\begin{table*}[t]
+\begin{table}[!t]
 \centering
-\small
-\setlength{\tabcolsep}{12pt}
-\renewcommand{\arraystretch}{1.15}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.00}
 \begin{tabular}{lrrr}
 \toprule
 Objective & R@10 & NDCG@10 & R@100 \\
@@ -421,7 +421,7 @@ Sampled CE (256 negatives) & $0.2895{\pm}0.0077$ & $0.1663{\pm}0.0034$ & $0.6592
 \end{tabular}
 \caption{ML-1M objective-visibility control (mean $\pm$ sample SD; seeds 42--44). Reducing catalog visibility to 256 sampled negatives lowers R@10 by 0.0087 but retains competitive accuracy, so objective visibility explains part, not all, of the continuous model's behavior.}
 \label{tab:objective-control}
-\end{table*}
+\end{table}
 
 \paragraph{Scoreability versus empirical output coverage.}
 Catalog-wide scoreability does not imply that every item appears in a finite
@@ -435,11 +435,11 @@ approach full union coverage by Top-100. These results reinforce the
 distinction among scoreability, per-user target support, and empirical catalog
 coverage.
 
-\begin{table*}[t]
+\begin{table*}[!t]
 \centering
-\small
+\footnotesize
 \setlength{\tabcolsep}{7pt}
-\renewcommand{\arraystretch}{1.12}
+\renewcommand{\arraystretch}{1.00}
 \begin{tabular}{lrrrrrr}
 \toprule
 Dataset &
@@ -479,12 +479,30 @@ improving shallow accuracy. We therefore use $L=3$ primarily to match the
 three-level SID decoding structure, rather than because three continuous
 outputs are intrinsically necessary.
 
-
+\begin{table}[!t]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{1.00}
+\begin{tabular}{lrrr}
+\toprule
+Depth & R@10 & NDCG@10 & R@100 \\
+\midrule
+$L=1$ & 0.2924 & \textbf{0.1719} & 0.6550 \\
+$L=2$ & 0.2909 & 0.1688 & 0.6525 \\
+$L=3$ & 0.2914 & 0.1667 & 0.6619 \\
+$L=4$ & \textbf{0.2944} & 0.1717 & \textbf{0.6697} \\
+\bottomrule
+\end{tabular}
+\caption{Single-seed CQG-AR decoding-depth ablation on ML-1M. All rows use
+seed 42, full-catalog CE, and intermediate-loss weight 0.3. Additional
+continuous refinements do not yield a monotonic R@10 or NDCG@10 improvement.}
+\label{tab:ar-depth}
+\end{table}
 
 \paragraph{Beam-width sensitivity.}
 For the seed-42 ML-1M TIGER checkpoint, increasing beam width from 100 to 200 raises TargetSupport from 63.8\% to 73.5\% and union catalog coverage from 95.3\% to 99.3\%. The corresponding full-user decoding time approximately doubles. Wider search therefore relaxes the observed support limitation substantially; our evidence supports a finite-compute trade-off, not an architecture-invariant catalog ceiling.
 
-\FloatBarrier
 \section{Discussion and Limitations}
 
 \paragraph{Interpretation of the crossover.}
@@ -529,27 +547,7 @@ open.
 
 This paper studies finite-beam output support as a practical bottleneck in SID-based generative recommendation. In our evaluated models, target-conditioned support and empirical output coverage are incomplete and popularity-skewed, and a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Single demonstrates a minimal one-step continuous query, while CQG-AR shows that an autoregressive decoder can replace discrete SID tokens with continuous residual outputs and retain competitive accuracy. The depth ablation finds no monotonic shallow-accuracy gain from additional continuous generation steps, indicating that one generated embedding can be a competitive and more serially efficient alternative to a three-level output in the evaluated setting. Together these results separate the value of autoregression from the constraints of a discrete output vocabulary and motivate protocol-matched evaluation of accuracy, target support, and matched-budget catalog coverage.
 
-\begin{table}[t]
-\centering
-\small
-\setlength{\tabcolsep}{8pt}
-\renewcommand{\arraystretch}{1.08}
-\begin{tabular}{lrrr}
-\toprule
-Depth & R@10 & NDCG@10 & R@100 \\
-\midrule
-$L=1$ & 0.2924 & \textbf{0.1719} & 0.6550 \\
-$L=2$ & 0.2909 & 0.1688 & 0.6525 \\
-$L=3$ & 0.2914 & 0.1667 & 0.6619 \\
-$L=4$ & \textbf{0.2944} & 0.1717 & \textbf{0.6697} \\
-\bottomrule
-\end{tabular}
-\caption{Single-seed CQG-AR decoding-depth ablation on ML-1M. All rows use
-seed 42, full-catalog CE, and intermediate-loss weight 0.3. Additional
-continuous refinements do not yield a monotonic R@10 or NDCG@10 improvement.}
-\label{tab:ar-depth}
-\end{table}
-
+\FloatBarrier
 \bibliography{references}
 
 \clearpage
