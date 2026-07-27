@@ -39,7 +39,13 @@ Generative recommendation (GR) retrieves items by autoregressively decoding disc
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.8\textwidth]{Figures/fig1_1_pipeline.pdf}
-\caption{Discrete SID retrieval versus the two continuous-query methods. SID systems tokenize items and autoregressively expand code paths with beam search. CQG-Single generates one continuous query; CQG-AR autoregressively refines continuous residuals. Both continuous methods retrieve in a frozen item space by dense scoring or ANN.}
+\caption{Inference interfaces for SID retrieval, CQG-Single, and CQG-AR. 
+SID retrieval autoregressively generates discrete code tokens and explores 
+candidate paths with finite-width beam search. CQG-Single produces one 
+continuous query in a single forward pass, whereas CQG-AR autoregressively 
+generates residual updates that refine a continuous query. Both CQG variants 
+retrieve from the same frozen item embedding index by dense scoring or ANN, 
+without an item-token vocabulary or code-to-item lookup.}
 \label{fig:pipeline}
 \end{figure*}
 
@@ -473,26 +479,7 @@ improving shallow accuracy. We therefore use $L=3$ primarily to match the
 three-level SID decoding structure, rather than because three continuous
 outputs are intrinsically necessary.
 
-\begin{table}[t]
-\centering
-\small
-\setlength{\tabcolsep}{8pt}
-\renewcommand{\arraystretch}{1.08}
-\begin{tabular}{lrrr}
-\toprule
-Depth & R@10 & NDCG@10 & R@100 \\
-\midrule
-$L=1$ & 0.2924 & \textbf{0.1719} & 0.6550 \\
-$L=2$ & 0.2909 & 0.1688 & 0.6525 \\
-$L=3$ & 0.2914 & 0.1667 & 0.6619 \\
-$L=4$ & \textbf{0.2944} & 0.1717 & \textbf{0.6697} \\
-\bottomrule
-\end{tabular}
-\caption{Single-seed CQG-AR decoding-depth ablation on ML-1M. All rows use
-seed 42, full-catalog CE, and intermediate-loss weight 0.3. Additional
-continuous refinements do not yield a monotonic R@10 or NDCG@10 improvement.}
-\label{tab:ar-depth}
-\end{table}
+
 
 \paragraph{Beam-width sensitivity.}
 For the seed-42 ML-1M TIGER checkpoint, increasing beam width from 100 to 200 raises TargetSupport from 63.8\% to 73.5\% and union catalog coverage from 95.3\% to 99.3\%. The corresponding full-user decoding time approximately doubles. Wider search therefore relaxes the observed support limitation substantially; our evidence supports a finite-compute trade-off, not an architecture-invariant catalog ceiling.
@@ -541,6 +528,27 @@ open.
 \section{Conclusion}
 
 This paper studies finite-beam output support as a practical bottleneck in SID-based generative recommendation. In our evaluated models, target-conditioned support and empirical output coverage are incomplete and popularity-skewed, and a depth-dependent Crossover Phenomenon can emerge between SID decoding and vocabulary-free continuous retrieval. CQG-Single demonstrates a minimal one-step continuous query, while CQG-AR shows that an autoregressive decoder can replace discrete SID tokens with continuous residual outputs and retain competitive accuracy. The depth ablation finds no monotonic shallow-accuracy gain from additional continuous generation steps, indicating that one generated embedding can be a competitive and more serially efficient alternative to a three-level output in the evaluated setting. Together these results separate the value of autoregression from the constraints of a discrete output vocabulary and motivate protocol-matched evaluation of accuracy, target support, and matched-budget catalog coverage.
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{8pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabular}{lrrr}
+\toprule
+Depth & R@10 & NDCG@10 & R@100 \\
+\midrule
+$L=1$ & 0.2924 & \textbf{0.1719} & 0.6550 \\
+$L=2$ & 0.2909 & 0.1688 & 0.6525 \\
+$L=3$ & 0.2914 & 0.1667 & 0.6619 \\
+$L=4$ & \textbf{0.2944} & 0.1717 & \textbf{0.6697} \\
+\bottomrule
+\end{tabular}
+\caption{Single-seed CQG-AR decoding-depth ablation on ML-1M. All rows use
+seed 42, full-catalog CE, and intermediate-loss weight 0.3. Additional
+continuous refinements do not yield a monotonic R@10 or NDCG@10 improvement.}
+\label{tab:ar-depth}
+\end{table}
 
 \bibliography{references}
 
