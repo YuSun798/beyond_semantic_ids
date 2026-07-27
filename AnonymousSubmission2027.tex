@@ -248,6 +248,65 @@ We first train a two-layer SASRec with BPR on chronological next-item pairs and 
 
 \section{Results}
 
+\paragraph{Primary cross-dataset comparison.}
+Table~\ref{tab:primary-comparison} compares the two continuous methods and
+TIGER-style SID across all three datasets, while retaining NDCG and parameter
+count for the primary ML-1M diagnostic. Under the same 6,040-user ML-1M
+evaluator, CQG-Single is strongest at shallow retrieval, while CQG-AR matches
+the current TIGER-style accuracy with smaller seed variance. Beauty is also
+full-user protocol matched; its paired seed-42 comparison favors CQG-Single at
+$K=10,50,90$ (all $p<.001$). Sports TIGER still uses sampled users and is
+shown only as an unpaired diagnostic.
+
+\begin{table*}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llrrrrr}
+\toprule
+Output interface & Method & Params & ML-1M R@10 & ML-1M NDCG@10 & Beauty R@10 & Sports R@10 \\
+\midrule
+Full-rank baseline & SASRec & -- & 0.2797 & 0.1535 & -- & -- \\
+Discrete AR & TIGER-style SID & 5.78M & $0.2957{\pm}0.0103$ & $0.1717{\pm}0.0064$ & $0.0474{\pm}0.0044$ & $0.0245{\pm}0.0022$ \\
+Continuous single-step & CQG-Single & 3.2M & $\mathbf{0.3114{\pm}0.0069}$ & $\mathbf{0.1814{\pm}0.0070}$ & $\mathbf{0.0597{\pm}0.0046}$ & $0.0353{\pm}0.0014$ \\
+Continuous AR & CQG-AR ($L=3$) & 5.62M & $0.2982{\pm}0.0042$ & $0.1727{\pm}0.0020$ & $0.0571{\pm}0.0043$ & $\mathbf{0.0355{\pm}0.0004}$ \\
+\bottomrule
+\end{tabular}
+\caption{Primary comparison (mean and sample SD, seeds 42--44). ML-1M and Beauty are full-user protocol matched; Sports TIGER uses approximately 5,000 sampled users per seed and is an unpaired diagnostic. Amazon TIGER uses our hierarchical-$k$-means baseline.}
+\label{tab:primary-comparison}
+\end{table*}
+
+\paragraph{Cross-dataset pipeline results.}
+We also evaluate a legacy MSE-trained CQG-Single checkpoint as a candidate
+generator followed by SASRec reranking. Table~\ref{tab:cross} shows that this
+pipeline achieves 97.7--102\% of SASRec Recall@10 across the three datasets.
+These candidate-generation diagnostics are separate from the CE-trained
+standalone results in Table~\ref{tab:primary-comparison}.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+Method & ML-1M & Beauty & Sports \\
+\midrule
+\multicolumn{4}{l}{\textit{Recall@10}} \\
+SASRec & 0.2797 & 0.0558 & 0.0390 \\
+CQG-Single MSE standalone & 0.2425 & 0.0524 & 0.0307 \\
+CQG-Single MSE + reranker & \textbf{0.2801} & \textbf{0.0569} & 0.0381 \\
+TIGER candidates + SASRec & 0.2864 & -- & -- \\
+\midrule
+\multicolumn{4}{l}{\textit{NDCG@10}} \\
+SASRec & 0.1535 & 0.0296 & 0.0197 \\
+CQG-Single MSE standalone & 0.1424 & 0.0266 & 0.0150 \\
+CQG-Single MSE + reranker & \textbf{0.1554} & \textbf{0.0308} & 0.0194 \\
+TIGER candidates + SASRec & 0.1571 & -- & -- \\
+\bottomrule
+\end{tabular}
+\caption{Candidate-generation diagnostic with a matched 100-candidate budget. CQG-Single uses the legacy MSE checkpoint; the TIGER reranking control is currently available on ML-1M only. These rows are separate from the CE standalone models.}
+\label{tab:cross}
+\end{table}
+
 \subsection{Budget-Constrained Target-Support Ceiling}
 
 For a fixed SID model and beam width $B$, target support is the fraction of test users whose held-out target occurs anywhere in the unfiltered beam. On ML-1M, the canonical seed-42 TIGER-style model has TargetSupport@100 of 63.8\%. This is a per-user quantity closely related to Recall@100; it is not the fraction of catalog items retrieved. Table~\ref{tab:reachability} stratifies this target-conditioned diagnostic by target popularity. We report empirical catalog coverage separately as the union of top-$K$ output items under a matched $K$ for SID, CQG-Single, and CQG-AR.
@@ -344,70 +403,6 @@ Aggregate & 6,040 & \textbf{0.3063} & 0.2992 & \textbf{0.5675} & 0.5581 & \textb
 \caption{Measured per-quartile Recall@$K$ curves on ML-1M, seed 42. Every point uses saved per-user output at $K\in\{10,20,\ldots,100,120,150\}$; no interpolation is used. TIGER uses beam width 200 and CQG-Single uses the same Top-200 output budget.}
 \label{fig:crossover}
 \end{figure*}
-
-\subsection{Primary Cross-Dataset Comparison}
-
-Table~\ref{tab:primary-comparison} compares the two continuous methods and
-TIGER-style SID across all three datasets, while retaining NDCG and parameter
-count for the primary ML-1M diagnostic. Under the same 6,040-user ML-1M
-evaluator, CQG-Single is strongest at shallow retrieval, while CQG-AR matches
-the current TIGER-style accuracy with smaller seed variance. Beauty is also
-full-user protocol matched. Sports TIGER still uses sampled users and is shown
-only as an unpaired diagnostic.
-
-\begin{table*}[t]
-\centering
-\scriptsize
-\setlength{\tabcolsep}{5pt}
-\begin{tabular}{llrrrrr}
-\toprule
-Output interface & Method & Params & ML-1M R@10 & ML-1M NDCG@10 & Beauty R@10 & Sports R@10 \\
-\midrule
-Full-rank baseline & SASRec & -- & 0.2797 & 0.1535 & -- & -- \\
-Discrete AR & TIGER-style SID & 5.78M & $0.2957{\pm}0.0103$ & $0.1717{\pm}0.0064$ & $0.0474{\pm}0.0044$ & $0.0245{\pm}0.0022$ \\
-Continuous single-step & CQG-Single & 3.2M & $\mathbf{0.3114{\pm}0.0069}$ & $\mathbf{0.1814{\pm}0.0070}$ & $\mathbf{0.0597{\pm}0.0046}$ & $0.0353{\pm}0.0014$ \\
-Continuous AR & CQG-AR ($L=3$) & 5.62M & $0.2982{\pm}0.0042$ & $0.1727{\pm}0.0020$ & $0.0571{\pm}0.0043$ & $\mathbf{0.0355{\pm}0.0004}$ \\
-\bottomrule
-\end{tabular}
-\caption{Primary comparison (mean and sample SD, seeds 42--44). ML-1M and Beauty are full-user protocol matched; Sports TIGER uses approximately 5,000 sampled users per seed and is an unpaired diagnostic. Amazon TIGER uses our hierarchical-$k$-means baseline.}
-\label{tab:primary-comparison}
-\end{table*}
-
-\paragraph{How many continuous decoding steps are necessary?}
-Increasing CQG-AR depth from one to four does not monotonically improve shallow
-accuracy, and the single-step boundary remains competitive with the
-three-step control. Full results and protocol details appear in
-Appendix~\ref{app:depth}.
-
-On Beauty, the paired seed-42 comparison favors CQG-Single at all evaluated depths. The CQG-minus-TIGER Recall difference is 0.0089 at $K=10$ (95\% CI $[0.0059,0.0118]$), 0.0102 at $K=50$ (CI $[0.0064,0.0142]$), and 0.0129 at $K=90$ (CI $[0.0085,0.0173]$); all paired user-bootstrap tests give $p<.001$. Thus, the protocol-matched Beauty result does not show the rare-item shallow advantage observed in the ML-1M seed-42 diagnostic.
-
-\subsection{Cross-Dataset Pipeline Results}
-
-We further evaluate a legacy MSE-trained CQG-Single checkpoint as a candidate generator followed by SASRec reranking. Table~\ref{tab:cross} shows that this pipeline achieves 97.7--102\% of SASRec Recall@10 across ML-1M, Beauty, and Sports. These values are a candidate-generation diagnostic and are not the CE-trained standalone results in Table~\ref{tab:primary-comparison}. The corresponding CQG-AR pipeline uses the same reranking interface; its standalone three-dataset results appear in Table~\ref{tab:primary-comparison}.
-
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{lrrr}
-\toprule
-Method & ML-1M & Beauty & Sports \\
-\midrule
-\multicolumn{4}{l}{\textit{Recall@10}} \\
-SASRec & 0.2797 & 0.0558 & 0.0390 \\
-CQG-Single MSE standalone & 0.2425 & 0.0524 & 0.0307 \\
-CQG-Single MSE + reranker & \textbf{0.2801} & \textbf{0.0569} & 0.0381 \\
-TIGER candidates + SASRec & 0.2864 & -- & -- \\
-\midrule
-\multicolumn{4}{l}{\textit{NDCG@10}} \\
-SASRec & 0.1535 & 0.0296 & 0.0197 \\
-CQG-Single MSE standalone & 0.1424 & 0.0266 & 0.0150 \\
-CQG-Single MSE + reranker & \textbf{0.1554} & \textbf{0.0308} & 0.0194 \\
-TIGER candidates + SASRec & 0.1571 & -- & -- \\
-\bottomrule
-\end{tabular}
-\caption{Candidate-generation diagnostic with a matched 100-candidate budget. CQG-Single uses the legacy MSE checkpoint; the TIGER reranking control is currently available on ML-1M only. These rows are separate from the CE standalone models.}
-\label{tab:cross}
-\end{table}
 
 \subsection{Retrieval Quality Hierarchy}
 
