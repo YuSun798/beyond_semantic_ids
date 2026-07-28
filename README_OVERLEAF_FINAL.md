@@ -12,8 +12,11 @@ Appendix file:
 AnonymousSubmission2027_appendix.tex
 ```
 
-The main file contains the paper body and bibliography, then includes the
-appendix with `\input{AnonymousSubmission2027_appendix}`.
+Both files are independent compilation roots:
+
+- `AnonymousSubmission2027.tex` produces only the main paper and References.
+- `AnonymousSubmission2027_appendix.tex` produces only the Appendix.
+- Neither root inputs the other file or depends on the other root's `.aux` file.
 
 Compile setting:
 

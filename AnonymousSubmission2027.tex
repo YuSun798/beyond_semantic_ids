@@ -16,6 +16,7 @@
 \usepackage{float}
 \usepackage{placeins}
 
+
 \pdfinfo{
 /TemplateVersion (2027.1)
 }
@@ -313,7 +314,7 @@ adding the residual and then normalizing the result. In the final
 configuration, only the final query receives direct full-catalog CE
 supervision. The multimodal Sports diagnostic instead uses a frozen fusion of
 collaborative and ImageNet-pretrained ResNet-18 features. Full implementation
-details are provided in Appendix~\ref{app:training}.
+details are provided in Appendix D.
 
 \section{Results}
 
@@ -372,7 +373,7 @@ This result separates code assignment from target support: 99.4\% unique codes d
 Table~\ref{tab:primary-comparison} provides the primary cross-dataset
 comparison, while Figure~\ref{fig:crossover} examines retrieval depth and
 target popularity on ML-1M; exact values and paired-bootstrap intervals are
-reported in Appendix~\ref{app:crossover-values}. Table~\ref{tab:primary-comparison}
+reported in Appendix C.2. Table~\ref{tab:primary-comparison}
 is the sole aggregate comparison. ML-1M uses the completed seeds 42--48;
 Beauty and Sports use seeds 42--44.
 The paired seed-42 analysis uses valid-prefix constrained TIGER decoding and
@@ -388,7 +389,7 @@ paired differences at \(K=10,50,90\) is significant at the 0.05 level.
 Across the seven indexed training runs, however, CQG-Single exceeds TIGER in
 all seven, with a mean paired R@10 difference of 0.0107 (95\% paired
 \(t\)-interval [0.0021, 0.0193]; exact sign-flip \(p=.0156\);
-Appendix~\ref{app:seed-stability}). The first comparison quantifies
+Appendix B). The first comparison quantifies
 within-checkpoint user-sampling uncertainty, whereas the second quantifies
 variation across indexed training runs. Sports uses the same 21,519 users,
 targets, and history filtering for all methods. With corrected constrained
@@ -419,7 +420,7 @@ CQG-AR & AR continuous (\(L=3\)) & 5.62M & 0.2976 \(\pm\) 0.0032 & 0.1735 \(\pm\
 full-rank baselines; TIGER, CQG-Single, and CQG-AR report mean $\pm$ sample SD.
 ML-1M uses seven training seeds (42--48), whereas Beauty and Sports use three
 (42--44); seed-level values and 95\% $t$ intervals are in
-Appendix~\ref{app:seed-stability}. SASRec parameter counts are dataset dependent because its
+Appendix B. SASRec parameter counts are dataset dependent because its
 item embedding table scales with catalog size. Each ML-1M TIGER checkpoint is
 reselected from the saved 10K--50K-step checkpoints using valid-prefix
 constrained validation; the corrected R@10 mean is unchanged from the earlier
@@ -431,7 +432,7 @@ selection and valid-prefix decoding.}
 \end{table*}
 
 MSE-trained candidate-generation and reranking diagnostics are reported
-separately in Appendix~\ref{app:mse-rerank}; they are not results from the
+separately in Appendix C.1; they are not results from the
 CE-trained CQG-Single or CQG-AR models used in the primary comparison.
 
 \section{Analysis}
@@ -445,7 +446,7 @@ TIGER-style baseline. Thus training-time catalog visibility explains part,
 but not all, of the observed behavior; our architecture-level claim is
 limited to eliminating discrete code lookup and finite-beam exclusion.
 The sampled-negative control and broader frozen-item objective comparison are
-reported in Appendix~\ref{app:loss-objectives}.
+reported in Appendix F.1.
 
 \paragraph{Scoreability versus empirical output coverage.}
 Catalog-wide scoreability does not imply that every item appears in a finite
@@ -587,7 +588,5 @@ This paper studies finite-beam output support as a practical bottleneck in SID-b
 
 \FloatBarrier
 \bibliography{references}
-
-\input{AnonymousSubmission2027_appendix}
 
 \end{document}

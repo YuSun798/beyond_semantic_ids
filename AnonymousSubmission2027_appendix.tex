@@ -1,4 +1,28 @@
-\clearpage
+\documentclass[letterpaper]{article}
+\usepackage[submission]{aaai2027}
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{caption}
+\frenchspacing
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{multirow}
+\usepackage{float}
+\usepackage{placeins}
+
+
+\pdfinfo{
+/TemplateVersion (2027.1)
+}
+
+\begin{document}
+
 \onecolumn
 \appendix
 \setcounter{secnumdepth}{2}
@@ -122,7 +146,7 @@ reported in Table~\ref{tab:cross}. Table~\ref{tab:hierarchy} further
 compares the learned retriever with random, last-item kNN, and mean-of-five
 kNN baselines under the same SASRec reranker. These candidate-generation
 diagnostics are separate from the CE-trained standalone results in
-Table~\ref{tab:primary-comparison}.
+Table 3 in the main paper.
 
 \begin{table}[H]
 \centering
@@ -282,8 +306,8 @@ For the matched-target diagnostic, we first group distinct test-target items by 
 We report the mean and standard deviation over 200 trials. This equalizes the number of distinct sampled targets, but it is not a substitute for the matched CatalogCoverage@$K$ measurement above.
 
 Our primary diagnostics directly report item-balanced support in
-Table~\ref{tab:target-support-comparison}, matched union coverage in
-Table~\ref{tab:matched-coverage}, and explicit training-seed variation in
+Table 2 in the main paper, matched union coverage in
+Table 4 in the main paper, and explicit training-seed variation in
 Table~\ref{tab:ml1m-seven-seed}. These quantities separately address target
 imbalance, output diversity, and training-run uncertainty; within-seed item
 resampling is not used as a proxy for training-seed variation.
@@ -576,9 +600,9 @@ measurements from this reproduction separately.
 Method & Beauty R@10 & Beauty NDCG@10 \\
 \midrule
 Ours: TIGER-style & 0.0477 \(\pm\) 0.0042 & 0.0273 \(\pm\) 0.0019 \\
-TIGER~\citep{rajput2023tiger} & 0.0648 & 0.0384 \\
-LETTER-TIGER~\citep{zheng2024letter} & 0.0672 & 0.0364 \\
-EAGER~\citep{wang2024eager} & 0.0836 & 0.0525 \\
+TIGER (Rajput et al., 2023) & 0.0648 & 0.0384 \\
+LETTER-TIGER (Zheng et al., 2024) & 0.0672 & 0.0364 \\
+EAGER (Wang et al., 2024) & 0.0836 & 0.0525 \\
 \bottomrule
 \end{tabular}
 \caption{Published and reproduced SID results on Amazon Beauty, provided only
@@ -781,3 +805,5 @@ k-means fallback B & 99.8\% & R@10 = 0.1932, 52\% reachability \\
 \label{app:dynamic}
 
 CQG-Single and CQG-AR share the same index-level update interface. A new encoded item can be inserted into the ANN index without adding an output token, rebuilding a code trie, or changing either model's output dimensionality. This interface property does not guarantee cold-item ranking quality. In contrast, a SID system must assign the new item to a code path; if the assignment changes the code distribution or causes collisions, the codebook, trie, and decoder may need to be refreshed. A direct dynamic-catalog evaluation would hold out a fraction of items during training, insert them into the retrieval index only at test time, and measure new-item Recall@$K$, warm-item Recall@$K$, index update cost, and whether model retraining is required.
+
+\end{document}
