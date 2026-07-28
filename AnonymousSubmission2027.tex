@@ -408,26 +408,34 @@ claim.
 \renewcommand{\arraystretch}{0.87}
 \begin{tabular}{llrrrrr}
 \toprule
-Method & Config. & Params & \shortstack{ML-1M\\R@10} & \shortstack{ML-1M\\NDCG@10} & \shortstack{Beauty\\R@10} & \shortstack{Sports\\R@10} \\
+Method & Config. & Trainable Params & \shortstack{ML-1M\\R@10} & \shortstack{ML-1M\\NDCG@10} & \shortstack{Beauty\\R@10} & \shortstack{Sports\\R@10} \\
 \midrule
-SASRec & Full-rank & \shortstack{dataset-\\dependent} & 0.2797 & 0.1535 & 0.0558 & \textbf{0.0390} \\
+SASRec & Full-rank & \shortstack{0.32 / 0.88 / 0.79M} & 0.2797 & 0.1535 & 0.0558 & \textbf{0.0390} \\
 TIGER & Discrete AR & 5.78M & 0.2996 \(\pm\) 0.0072 & 0.1739 \(\pm\) 0.0046 & 0.0477 \(\pm\) 0.0042 & 0.0236 \(\pm\) 0.0028 \\
 CQG-Single & One-step & 3.2M & \textbf{0.3104 \(\pm\) 0.0047} & \textbf{0.1822 \(\pm\) 0.0044} & \textbf{0.0597 \(\pm\) 0.0046} & 0.0363 \(\pm\) 0.0015 \\
 CQG-AR & AR continuous (\(L=3\)) & 5.62M & 0.2976 \(\pm\) 0.0032 & 0.1735 \(\pm\) 0.0016 & 0.0571 \(\pm\) 0.0043 & 0.0355 \(\pm\) 0.0004 \\
 \bottomrule
 \end{tabular}
-\caption{Cross-dataset primary comparison. SASRec entries are single-checkpoint
-full-rank baselines; TIGER, CQG-Single, and CQG-AR report mean $\pm$ sample SD.
-ML-1M uses seven training seeds (42--48), whereas Beauty and Sports use three
-(42--44); seed-level values and 95\% $t$ intervals are in
-Appendix B. SASRec parameter counts are dataset dependent because its
-item embedding table scales with catalog size. Each ML-1M TIGER checkpoint is
-reselected from the saved 10K--50K-step checkpoints using valid-prefix
-constrained validation; the corrected R@10 mean is unchanged from the earlier
-selection, while deeper returned-list metrics change. All datasets use aligned
-full-user evaluation within each dataset. Amazon TIGER uses our
-hierarchical-$k$-means baseline with constrained-validation checkpoint
-selection and valid-prefix decoding.}
+% \caption{Cross-dataset primary comparison. SASRec entries are single-checkpoint
+% full-rank baselines; TIGER, CQG-Single, and CQG-AR report mean $\pm$ sample SD.
+% ML-1M uses seven training seeds (42--48), whereas Beauty and Sports use three
+% (42--44); seed-level values and 95\% $t$ intervals are in
+% Appendix B. SASRec parameter counts are dataset dependent because its
+% item embedding table scales with catalog size. Each ML-1M TIGER checkpoint is
+% reselected from the saved 10K--50K-step checkpoints using valid-prefix
+% constrained validation; the corrected R@10 mean is unchanged from the earlier
+% selection, while deeper returned-list metrics change. All datasets use aligned
+% full-user evaluation within each dataset. Amazon TIGER uses our
+% hierarchical-$k$-means baseline with constrained-validation checkpoint
+% selection and valid-prefix decoding.}
+\caption{Cross-dataset primary comparison. TIGER and CQG results are
+mean $\pm$ sample SD over seeds 42--48 on ML-1M and seeds 42--44 on
+Beauty and Sports; SASRec uses one full-rank checkpoint.  SASRec's trainable
+parameter counts of 0.32/0.88/0.79M correspond to ML-1M, Beauty, and
+Sports, respectively, reflecting their different item-embedding table
+sizes. All methods use aligned full-user evaluation, and TIGER uses
+valid-prefix constrained decoding. Seed-level results and 95\% $t$
+intervals are reported in Appendix B.}
 \label{tab:primary-comparison}
 \end{table*}
 
@@ -482,14 +490,10 @@ Beauty & 74.4\% & 96.3\% & \textbf{89.5\%} & \textbf{99.9\%} & 87.9\% & 99.8\% \
 Sports & \textbf{94.0\%} & \textbf{99.5\%} & 63.1\% & 96.9\% & 71.8\% & 98.4\% \\
 \bottomrule
 \end{tabular}
-\caption{Returned-list-size-matched Catalog Coverage: empirical union-of-Top-$K$
-catalog coverage for seed 42. All datasets use the same effective returned-list
-size, full test-user sets, and history filtering across the three methods;
-denominators exclude padding and
-contain 3,416, 12,101, and 10,693 items for ML-1M, Beauty, and Sports.
-This output-union metric is distinct from per-user TargetInOutput and
-catalog-wide scoreability. Bold marks the highest empirical coverage at each
-cutoff within a dataset; it does not denote the most accurate recommender.}
+\caption{Empirical union-of-Top-$K$ catalog coverage under matched
+returned-list sizes (seed 42). All methods use the same full-user sets
+and history filtering. Bold denotes the highest coverage within each
+dataset and cutoff, not the highest recommendation accuracy.}
 \label{tab:matched-coverage}
 \end{table*}
 
