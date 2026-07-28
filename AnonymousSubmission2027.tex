@@ -371,10 +371,10 @@ claim.
 \toprule
 Method & Config. & Params & \shortstack{ML-1M\\R@10} & \shortstack{ML-1M\\NDCG@10} & \shortstack{Beauty\\R@10} & \shortstack{Sports\\R@10} \\
 \midrule
-SASRec & Full-rank baseline & \shortstack{dataset-\\dependent} & 0.2797 & 0.1535 & 0.0558 & \textbf{0.0390} \\
-TIGER & Discrete AR & 5.78M & $0.2996{\pm}0.0072$ & $0.1739{\pm}0.0046$ & $0.0474{\pm}0.0044$ & $0.0238{\pm}0.0024$ \\
-CQG-Single & Single-step & 3.2M & $\mathbf{0.3104{\pm}0.0047}$ & $\mathbf{0.1822{\pm}0.0044}$ & $\mathbf{0.0597{\pm}0.0046}$ & $\mathbf{0.0363{\pm}0.0015}$ \\
-CQG-AR & Autoregressive ($L=3$) & 5.62M & $0.2976{\pm}0.0032$ & $0.1735{\pm}0.0016$ & $0.0571{\pm}0.0043$ & $0.0355{\pm}0.0004$ \\
+SASRec & Full-rank baseline & \shortstack{dataset-\\dependent} & $0.2797$ & $0.1535$ & $0.0558$ & $\mathbf{0.0390}$ \\
+TIGER & Discrete AR & $5.78\mathrm{M}$ & $0.2996{\pm}0.0072$ & $0.1739{\pm}0.0046$ & $0.0474{\pm}0.0044$ & $0.0238{\pm}0.0024$ \\
+CQG-Single & Single-step & $3.2\mathrm{M}$ & $\mathbf{0.3104{\pm}0.0047}$ & $\mathbf{0.1822{\pm}0.0044}$ & $\mathbf{0.0597{\pm}0.0046}$ & $\mathbf{0.0363{\pm}0.0015}$ \\
+CQG-AR & Autoregressive ($L=3$) & $5.62\mathrm{M}$ & $0.2976{\pm}0.0032$ & $0.1735{\pm}0.0016$ & $0.0571{\pm}0.0043$ & $0.0355{\pm}0.0004$ \\
 \bottomrule
 \end{tabular}
 \caption{Cross-dataset primary comparison. SASRec entries are single-checkpoint
@@ -436,9 +436,9 @@ Dataset &
 \shortstack{CQG-AR\\Cov.@10} &
 \shortstack{CQG-AR\\Cov.@100} \\
 \midrule
-ML-1M & 70.1\% & 95.3\% & 69.7\% & 97.6\% & 68.7\% & 97.6\% \\
-Beauty & 75.2\% & 98.1\% & 89.5\% & 99.9\% & 87.9\% & 99.8\% \\
-Sports & 92.6\% & 100.0\% & 63.1\% & 96.9\% & 71.8\% & 98.4\% \\
+ML-1M & $\mathbf{70.1\%}$ & $95.3\%$ & $69.7\%$ & $\mathbf{97.6\%}$ & $68.7\%$ & $\mathbf{97.6\%}$ \\
+Beauty & $75.2\%$ & $98.1\%$ & $\mathbf{89.5\%}$ & $\mathbf{99.9\%}$ & $87.9\%$ & $99.8\%$ \\
+Sports & $\mathbf{92.6\%}$ & $\mathbf{100.0\%}$ & $63.1\%$ & $96.9\%$ & $71.8\%$ & $98.4\%$ \\
 \bottomrule
 \end{tabular}
 \caption{Matched Catalog Coverage: empirical union-of-Top-$K$ catalog coverage
@@ -471,10 +471,10 @@ outputs are intrinsically necessary.
 \toprule
 Depth & R@10 & NDCG@10 & R@100 \\
 \midrule
-$L=1$ & 0.2924 & \textbf{0.1719} & 0.6550 \\
-$L=2$ & 0.2909 & 0.1688 & 0.6525 \\
-$L=3$ & 0.2914 & 0.1667 & 0.6619 \\
-$L=4$ & \textbf{0.2944} & 0.1717 & \textbf{0.6697} \\
+$L=1$ & $0.2924$ & $\mathbf{0.1719}$ & $0.6550$ \\
+$L=2$ & $0.2909$ & $0.1688$ & $0.6525$ \\
+$L=3$ & $0.2914$ & $0.1667$ & $0.6619$ \\
+$L=4$ & $\mathbf{0.2944}$ & $0.1717$ & $\mathbf{0.6697}$ \\
 \bottomrule
 \end{tabular}
 \caption{Single-seed CQG-AR decoding-depth ablation on ML-1M. All rows use
