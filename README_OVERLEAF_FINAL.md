@@ -6,6 +6,15 @@ Main file:
 AnonymousSubmission2027.tex
 ```
 
+Appendix file:
+
+```text
+AnonymousSubmission2027_appendix.tex
+```
+
+The main file contains the paper body and bibliography, then includes the
+appendix with `\input{AnonymousSubmission2027_appendix}`.
+
 Compile setting:
 
 ```text
