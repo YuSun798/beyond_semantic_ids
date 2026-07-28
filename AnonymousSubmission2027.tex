@@ -312,7 +312,7 @@ details are provided in Appendix~\ref{app:training}.
 
 \section{Results}
 
-\subsection{Checkpoint- and Budget-Specific Finite-Beam Reachability}
+\subsection{Budget-Specific Finite-Beam Reachability}
 
 For a fixed model and maximum returned-list size $B$, target support is the fraction of test
 users whose held-out target occurs anywhere in the returned list. On ML-1M,
@@ -365,7 +365,7 @@ scoreability.}
 
 This result separates code assignment from target support: 99.4\% unique codes do not imply that every held-out target enters a finite beam. Equivalently, 36.2\% of held-out user targets do not enter the width-100 beam for their corresponding test instances; this is not a statement that 36.2\% of catalog items are never retrieved. The distinct union-of-output catalog-coverage diagnostic is reported in Table~\ref{tab:matched-coverage}.
 
-\subsection{Checkpoint- and Popularity-Dependent Crossover}
+\subsection{Popularity-Dependent Crossover}
 
 Table~\ref{tab:primary-comparison} provides the primary cross-dataset
 comparison, while Figure~\ref{fig:crossover} examines retrieval depth and
