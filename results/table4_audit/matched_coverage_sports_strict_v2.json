@@ -1,0 +1,14 @@
+{
+  "TIGER": {
+    "10": {"unique_retrieved_items": 10047, "catalog_size": 10693, "catalog_coverage": 0.9395866454689984},
+    "100": {"unique_retrieved_items": 10638, "catalog_size": 10693, "catalog_coverage": 0.9948564481436454}
+  },
+  "CQG-Single": {
+    "10": {"unique_retrieved_items": 6743, "catalog_size": 10693, "catalog_coverage": 0.630599457589077},
+    "100": {"unique_retrieved_items": 10366, "catalog_size": 10693, "catalog_coverage": 0.9694192462358552}
+  },
+  "CQG-AR": {
+    "10": {"unique_retrieved_items": 7676, "catalog_size": 10693, "catalog_coverage": 0.7178528008977836},
+    "100": {"unique_retrieved_items": 10524, "catalog_size": 10693, "catalog_coverage": 0.9841952679322922}
+  }
+}

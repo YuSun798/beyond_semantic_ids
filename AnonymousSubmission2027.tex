@@ -578,18 +578,15 @@ The sampled-negative control and broader frozen-item objective comparison are
 reported in Appendix F.1.
 
 \paragraph{Scoreability versus empirical output coverage.}
-Catalog-wide scoreability does not imply that every item appears in a finite
-output set. With a matched returned-list size of 10 on ML-1M, TIGER, CQG-Single, and
-CQG-AR cover 70.1\%, 69.7\%, and 68.7\% of the catalog, respectively. Thus,
-CQG-Single's higher mean R@10 is not explained by retrieving a larger union of
-distinct items at this cutoff. At Top-100, the two continuous methods cover
-97.6\% of the catalog, compared with 97.0\% for TIGER. The separation is
-larger on Beauty at Top-10 (74.4\%, 89.5\%, and 87.9\%), although all methods
-approach full union coverage by Top-100. These results reinforce the
-distinction among scoreability, per-user target support, and empirical catalog
-coverage. Sports provides a counterexample to equating coverage with accuracy:
-TIGER has the broadest union coverage at both cutoffs, while full-rank SASRec
-has the highest R@10.
+Catalog-wide scoreability does not imply appearance in a finite output set.
+On ML-1M, the union of all users' Top-10 lists contains 2,394 TIGER, 2,380
+CQG-Single, and 2,346 CQG-AR items; at Top-100, the corresponding counts are
+3,314, 3,334, and 3,335 out of 3,416. Beauty shows a larger continuous-retrieval
+gain at Top-10: CQG-Single and CQG-AR cover 10,837 and 10,637 items, versus
+9,004 for TIGER. Sports reverses this pattern: TIGER covers the broadest union
+at both cutoffs, although full-rank SASRec has the highest R@10. Thus empirical
+catalog coverage is dataset dependent and should not be conflated with
+scoreability or recommendation accuracy.
 
 \begin{table*}[!t]
 \centering
@@ -606,15 +603,16 @@ Dataset &
 \shortstack{CQG-AR\\Cov.@10} &
 \shortstack{CQG-AR\\Cov.@100} \\
 \midrule
-ML-1M & \textbf{70.1\%} & 97.0\% & 69.7\% & \textbf{97.6\%} & 68.7\% & \textbf{97.6\%} \\
-Beauty & 74.4\% & 96.3\% & \textbf{89.5\%} & \textbf{99.9\%} & 87.9\% & 99.8\% \\
-Sports & \textbf{94.0\%} & \textbf{99.5\%} & 63.1\% & 96.9\% & 71.8\% & 98.4\% \\
+ML-1M & \textbf{2,394 (70.1\%)} & 3,314 (97.0\%) & 2,380 (69.7\%) & 3,334 (97.6\%) & 2,346 (68.7\%) & \textbf{3,335 (97.6\%)} \\
+Beauty & 9,004 (74.4\%) & 11,661 (96.4\%) & \textbf{10,837 (89.6\%)} & \textbf{12,090 (99.9\%)} & 10,637 (87.9\%) & 12,078 (99.8\%) \\
+Sports & \textbf{10,047 (94.0\%)} & \textbf{10,638 (99.5\%)} & 6,743 (63.1\%) & 10,366 (96.9\%) & 7,676 (71.8\%) & 10,524 (98.4\%) \\
 \bottomrule
 \end{tabular}
-\caption{Empirical union-of-Top-$K$ catalog coverage under matched
-returned-list sizes (seed 42). All methods use the same full-user sets
-and history filtering. Bold denotes the highest coverage within each
-dataset and cutoff, not the highest recommendation accuracy.}
+\caption{Distinct catalog items in the union of all users' Top-$K$ lists,
+with catalog percentage in parentheses (seed 42). Catalog sizes are
+3,416/12,101/10,693 for ML-1M/Beauty/Sports. Every user contributes exactly
+$K$ valid, distinct, history-filtered items. Bold marks the largest union at
+each dataset and cutoff, not the highest recommendation accuracy.}
 \label{tab:matched-coverage}
 \end{table*}
 
@@ -722,7 +720,6 @@ ablation finds no consistent shallow benefit from refinement. CQG-Single is not 
 Together, these results decouple autoregression from discrete output
 constraints and motivate matched evaluation of accuracy, target support,
 and catalog coverage.
-
 
 \FloatBarrier
 \bibliography{references}

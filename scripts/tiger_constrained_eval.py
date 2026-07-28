@@ -22,18 +22,22 @@ import torch.nn.functional as F
 import tiger_standalone as ts
 
 
-def build_trie(item_codes):
-    children0 = sorted({int(code[0]) for code in item_codes})
+def build_trie(item_codes, first_item_id=1):
+    children0 = set()
     children1 = defaultdict(set)
     children2 = defaultdict(set)
     code_items = defaultdict(list)
+    # Item 0 is padding in every processed dataset and must never be decoded.
     for item_id, raw in enumerate(item_codes):
+        if item_id < first_item_id:
+            continue
         code = tuple(int(x) for x in raw)
+        children0.add(code[0])
         children1[code[0]].add(code[1])
         children2[(code[0], code[1])].add(code[2])
         code_items[code].append(item_id)
     return (
-        children0,
+        sorted(children0),
         {key: sorted(value) for key, value in children1.items()},
         {key: sorted(value) for key, value in children2.items()},
         {key: sorted(value) for key, value in code_items.items()},
@@ -122,7 +126,12 @@ def constrained_beam(model, input_codes, trie, beam_width, device, max_code_len)
 
 
 def evaluate(args):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
     code_path = os.path.join(args.output_dir, "kmeans_codes.pt")
     item_codes = torch.load(
         code_path, map_location="cpu", weights_only=False
@@ -161,6 +170,11 @@ def evaluate(args):
         )
     )
     model.eval()
+    if len(item_codes) != int(data["num_items"]):
+        raise ValueError(
+            f"code table has {len(item_codes)} rows but data num_items="
+            f"{data['num_items']}"
+        )
     trie = build_trie(item_codes)
 
     cutoffs = sorted({10, 30, 50, 70, 90, 100, args.return_size})
@@ -186,6 +200,15 @@ def evaluate(args):
 
         returned = filtered[: args.return_size]
         items = [item for item, _ in returned]
+        if len(items) != args.return_size:
+            raise RuntimeError(
+                f"user {user_ids[index]} has only {len(items)} valid items "
+                f"at max_beam={args.max_beam}; matched-list evaluation aborted"
+            )
+        if len(items) != len(set(items)):
+            raise RuntimeError(f"user {user_ids[index]} has duplicate returned items")
+        if any(item <= 0 or item >= int(data["num_items"]) for item in items):
+            raise RuntimeError(f"user {user_ids[index]} has an invalid item ID")
         lengths.append(len(items))
         beams_used.append(internal_beam)
         for cutoff in cutoffs:
