@@ -86,8 +86,6 @@ def figure2():
         color="#805500",
         bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.88, "pad": 1.5},
     )
-    ax.set_title("Returned-List-Size-Matched Target Support (ML-1M, seed 42)",
-                 fontsize=14, fontweight="bold")
     ax.set_ylabel("TargetInOutput@100 (%)", fontsize=14, color="black")
     ax.set_xticks(x, labels, fontsize=10, color="black")
     ax.set_yticks([0, 25, 50, 75, 100])

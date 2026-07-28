@@ -2,6 +2,31 @@
 
 Source review: `/Users/sunyu/Desktop/GR_text/review.pdf`
 
+## Completion Status
+
+Completed for the final revision:
+
+- ML-1M seeds 42--48 and Beauty/Sports seeds 42--44 were reselected by
+  valid-prefix constrained validation and evaluated on the complete test sets.
+- SID decoding now uses a catalog trie, exact code lookup, deterministic
+  collision handling, history filtering, and adaptive internal
+  over-generation. The obsolete numeric nearest-code fallback was removed
+  from the shared implementation.
+- All evaluated users receive the requested number of valid, distinct,
+  history-filtered items; the evaluator records both returned-list length and
+  internal beam size.
+- Tables 2--4, Figures 2--3, the Abstract, Results, Discussion, Conclusion,
+  and Appendices B/C/E were updated from the corrected results.
+- Figure 1 now uses the paper's chronological-history terminology and depicts
+  valid-prefix beam search. Figure 2 has no embedded title, and Figure 5's
+  diagnostic label no longer overlaps its value.
+- Sports is fully populated rather than marked pending. Its constrained TIGER
+  R@10 is \(0.0236\pm0.0028\), and seed-42 CatalogCoverage@10/@100 is
+  94.0\%/99.5\%.
+- The final manuscript distinguishes user-level bootstrap uncertainty from
+  training-run-level inference and uses TargetSupport only for SID
+  beam-specific quantities.
+
 This review is broadly positive, but its central numerical assessment is based
 on the earlier TIGER decoding protocol. Revisions must therefore proceed in two
 stages: first complete the constrained TIGER re-evaluation, then determine the
@@ -292,12 +317,12 @@ Render and inspect every page of the final PDF. Check:
 
 ## Execution Order
 
-1. Finish the constrained TIGER evaluations.
-2. Determine the corrected main conclusion.
-3. Regenerate all affected statistics, Tables 2–4, and Figures 2–3.
-4. Correct the decoding protocol throughout the paper.
-5. Remove the internal revision-history language.
-6. Strengthen only the CQG-AR claims supported by the corrected results.
-7. Repair the remaining typography and figure issues.
-8. Compile, render, and complete the final data, logic, terminology, and
+1. [x] Finish the constrained TIGER evaluations.
+2. [x] Determine the corrected main conclusion.
+3. [x] Regenerate all affected statistics, Tables 2--4, and Figures 2--3.
+4. [x] Correct the decoding protocol throughout the paper.
+5. [x] Remove the internal revision-history language.
+6. [x] Retain only CQG-AR claims supported by the corrected results.
+7. [x] Repair the remaining typography and figure issues.
+8. [x] Compile, render, and complete the final data, logic, terminology, and
    visual audits.
