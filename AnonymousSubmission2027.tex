@@ -360,58 +360,6 @@ These results indicate that CQG's advantage also effected by both target-item po
 \label{fig:crossover}
 \end{figure*}
 
-
-\textbf{Baselines.} We compare against SASRec \citep{kang2018sasrec}, TIGER-style SID retrieval, and reported SID results from TIGER, LETTER, and EAGER where protocols allow contextual comparison. We also include non-learned dense retrieval baselines: random retrieval, last-item kNN, and mean-of-5 kNN.
-
-\textbf{Model training protocol.}
-We first train a two-layer SASRec with BPR on chronological next-item pairs and select its checkpoint by full-catalog validation NDCG@10. Its 64-dimensional item embedding table is then frozen and shared by both continuous methods as the history-input table, target embedding or classifier matrix, and retrieval index. The main experiments use no textual or language-model item encoder.
-
-\textbf{CQG-Single} is a four-layer, four-head causal Transformer with width
-256. It directly generates one normalized query; the final configuration uses
-full-catalog CE, with MSE and in-batch InfoNCE evaluated as ablations.
-\textbf{CQG-AR} uses a four-layer, six-head causal Transformer with width 384
-to autoregressively generate three residual query updates. Each residual is
-fed into the next decoding step, while the cumulative query is updated by
-adding the residual and then normalizing the result. In the final
-configuration, only the final query receives direct full-catalog CE
-supervision. The multimodal Sports diagnostic instead uses a frozen fusion of
-collaborative and ImageNet-pretrained ResNet-18 features. Full implementation
-details are provided in Appendix D.
-
-\section{Results}
-
-\subsection{Budget-Specific Finite-Beam Reachability}
-
-For a fixed model and returned-list size $B$, target support is the fraction of test
-users whose held-out target occurs anywhere in the returned list. On ML-1M,
-the seed-42 TargetInOutput@100 values are 66.7\% for TIGER, 67.3\% for
-CQG-Single, and 66.4\% for CQG-AR. This is a per-user quantity closely related
-to Recall@100.
-% ; it is not the fraction of catalog items retrieved.
-Figure~\ref{fig:reachability} reports the matched popularity breakdown and
-user counts.
-
-For this fixed model--search pair, TargetSupport@$B$ is a realized ceiling on
-the Recall of any downstream reranker restricted to the decoded beam: a target
-that never enters the candidate set cannot be recovered later. This is a
-finite-beam reachability ceiling, not an architecture-invariant claim; increasing
-$B$ can raise it. CQG avoids this particular beam-exclusion mechanism because
-every encoded item remains scoreable, although its finite Top-$K$ Recall is
-still determined by query quality.
-
-Table~\ref{tab:target-support-comparison} provides the userd-weighted returned-list-size-matched finite-output comparison. TargetInOutput@100 is user weighted. Q1--Q4 first compute the hit rate of each distinct test-target item and then average items equally within training-frequency quartiles. TargetItemSupport@200 is the fraction of distinct held-out target items retrieved for at least one associated test instance. 
-% Under the corrected constrained protocol, 
-CQG-Single retains advantage in overall user-weighted TargetInOutput@100 and in all four item-balanced quartiles, whereas TIGER slightly exceeds CQG-AR on rare targets.
-
-Union-of-output catalog coverage is reported separately in Table~\ref{tab:matched-coverage}. On Beauty, and more modestly at Top-100 on ML-1M, CQG achieves broader
-catalog coverage than TIGER, suggesting potential for improved retrieval
-and generalization to long-tail items.
-% Figure~\ref{fig:reachability} is user weighted, whereas the Q1--Q4 columns in
-% Table~\ref{tab:target-support-comparison} average distinct target items equally
-% within the same quartile mapping.
-
-This result separates code assignment from target support: 99.4\% unique codes do not imply that every held-out target enters a finite returned list. Under the corrected Top-100 protocol, 33.3\% of held-out user targets do not enter the corresponding candidate list; this is not a statement that 33.3\% of catalog items are never retrieved. The distinct union-of-output catalog-coverage diagnostic is reported in Table~\ref{tab:matched-coverage}.
-
 \begin{table*}[!t]
 \centering
 \small
@@ -436,6 +384,99 @@ the final column is the fraction of distinct targets retrieved at least once
 by Top-200. Returned-list sizes and filtering are matched across methods.}
 \label{tab:target-support-comparison}
 \end{table*}
+
+
+
+\textbf{Baselines.} We compare against SASRec \citep{kang2018sasrec}, TIGER-style SID retrieval, and reported SID results from TIGER, LETTER, and EAGER where protocols allow contextual comparison. We also include non-learned dense retrieval baselines: random retrieval, last-item kNN, and mean-of-5 kNN.
+
+\textbf{Model training protocol.}
+We first train a two-layer SASRec with BPR on chronological next-item pairs and select its checkpoint by full-catalog validation NDCG@10. Its 64-dimensional item embedding table is then frozen and shared by both continuous methods as the history-input table, target embedding or classifier matrix, and retrieval index. The main experiments use no textual or language-model item encoder.
+
+\textbf{CQG-Single} is a four-layer, four-head causal Transformer with width
+256. It directly generates one normalized query; the final configuration uses
+full-catalog CE, with MSE and in-batch InfoNCE evaluated as ablations.
+\textbf{CQG-AR} uses a four-layer, six-head causal Transformer with width 384
+to autoregressively generate three residual query updates. Each residual is
+fed into the next decoding step, while the cumulative query is updated by
+adding the residual and then normalizing the result. In the final
+configuration, only the final query receives direct full-catalog CE
+supervision. The multimodal Sports diagnostic instead uses a frozen fusion of
+collaborative and ImageNet-pretrained ResNet-18 features. Full implementation
+details are provided in Appendix D.
+
+\begin{table*}[!t]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{0.87}
+\begin{tabular}{llrrrrr}
+\toprule
+Method & Config. & Trainable Params & \shortstack{ML-1M\\R@10} & \shortstack{ML-1M\\NDCG@10} & \shortstack{Beauty\\R@10} & \shortstack{Sports\\R@10} \\
+\midrule
+SASRec & Full-rank & \shortstack{0.32 / 0.88 / 0.79M} & 0.2797 & 0.1535 & 0.0558 & \textbf{0.0390} \\
+TIGER & Discrete AR & 5.78M & 0.2996 \(\pm\) 0.0072 & 0.1739 \(\pm\) 0.0046 & 0.0477 \(\pm\) 0.0042 & 0.0236 \(\pm\) 0.0028 \\
+CQG-Single & One-step & 3.2M & \textbf{0.3104 \(\pm\) 0.0047} & \textbf{0.1822 \(\pm\) 0.0044} & \textbf{0.0597 \(\pm\) 0.0046} & 0.0363 \(\pm\) 0.0015 \\
+CQG-AR & AR continuous (\(L=3\)) & 5.62M & 0.2976 \(\pm\) 0.0032 & 0.1735 \(\pm\) 0.0016 & 0.0571 \(\pm\) 0.0043 & 0.0355 \(\pm\) 0.0004 \\
+\bottomrule
+\end{tabular}
+% \caption{Cross-dataset primary comparison. SASRec entries are single-checkpoint
+% full-rank baselines; TIGER, CQG-Single, and CQG-AR report mean $\pm$ sample SD.
+% ML-1M uses seven training seeds (42--48), whereas Beauty and Sports use three
+% (42--44); seed-level values and 95\% $t$ intervals are in
+% Appendix B. SASRec parameter counts are dataset dependent because its
+% item embedding table scales with catalog size. Each ML-1M TIGER checkpoint is
+% reselected from the saved 10K--50K-step checkpoints using valid-prefix
+% constrained validation; the corrected R@10 mean is unchanged from the earlier
+% selection, while deeper returned-list metrics change. All datasets use aligned
+% full-user evaluation within each dataset. Amazon TIGER uses our
+% hierarchical-$k$-means baseline with constrained-validation checkpoint
+% selection and valid-prefix decoding.}
+\caption{Cross-dataset primary comparison. TIGER and CQG results are
+mean $\pm$ sample SD over seeds 42--48 on ML-1M and seeds 42--44 on
+Beauty and Sports; SASRec uses one full-rank checkpoint.  SASRec's trainable
+parameter counts of 0.32/0.88/0.79M correspond to ML-1M, Beauty, and
+Sports, respectively, reflecting their different item-embedding table
+sizes. All methods use aligned full-user evaluation, and TIGER uses
+valid-prefix constrained decoding. Seed-level results and 95\% $t$
+intervals are reported in Appendix B.}
+\label{tab:primary-comparison}
+\end{table*}
+
+
+\section{Results}
+
+\subsection{Budget-Specific Finite-Beam Reachability}
+
+For a fixed model and returned-list size $B$, target support is the fraction of test
+users whose held-out target occurs anywhere in the returned list. On ML-1M,
+the seed-42 TargetInOutput@100 values are 66.7\% for TIGER, 67.3\% for
+CQG-Single, and 66.4\% for CQG-AR. This is a per-user quantity closely related
+to Recall@100.
+% ; it is not the fraction of catalog items retrieved.
+Figure~\ref{fig:reachability} reports the matched popularity breakdown and
+user counts.
+
+For this fixed model--search pair, TargetSupport@$B$ is a realized ceiling on
+the Recall of any downstream reranker restricted to the decoded beam: a target
+that never enters the candidate set cannot be recovered later. This is a
+finite-beam reachability ceiling, not an architecture-invariant claim; increasing
+$B$ can raise it. CQG avoids this particular beam-exclusion mechanism because
+every encoded item remains scoreable, although its finite Top-$K$ Recall is
+still determined by query quality.
+
+Table~\ref{tab:target-support-comparison} provides the user-weighted and returned-list-size-matched finite-output comparison. TargetInOutput@100 is user weighted. Q1--Q4 first compute the hit rate of each distinct test-target item and then average items equally within training-frequency quartiles. TargetItemSupport@200 is the fraction of distinct held-out target items retrieved for at least one associated test instance. 
+% Under the corrected constrained protocol, 
+CQG-Single retains advantage in overall user-weighted TargetInOutput@100 and in all four item-balanced quartiles.
+% whereas TIGER slightly exceeds CQG-AR on rare targets.
+
+Union-of-output catalog coverage is reported separately in Table~\ref{tab:matched-coverage}. On Beauty, and more modestly at Top-100 on ML-1M, CQG achieves broader
+catalog coverage than TIGER, suggesting potential for improved retrieval
+and generalization to long-tail items.
+% Figure~\ref{fig:reachability} is user weighted, whereas the Q1--Q4 columns in
+% Table~\ref{tab:target-support-comparison} average distinct target items equally
+% within the same quartile mapping.
+This result separates code assignment from target support: 99.4\% unique codes do not imply that every held-out target enters a finite returned list. Under the corrected Top-100 protocol, 33.3\% of held-out user targets do not enter the corresponding candidate list; this is not a statement that 33.3\% of catalog items are never retrieved. The distinct union-of-output catalog-coverage diagnostic is reported in Table~\ref{tab:matched-coverage}.
+
 
 
 
@@ -550,47 +591,12 @@ datasets. The largest gain occurs on Sports, where R@10 increases from
 can potentially remove SID-specific decoding constraints without sacrificing
 autoregressive generalization or retrieval accuracy.
 
-\begin{table*}[!t]
-\centering
-\small
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{0.87}
-\begin{tabular}{llrrrrr}
-\toprule
-Method & Config. & Trainable Params & \shortstack{ML-1M\\R@10} & \shortstack{ML-1M\\NDCG@10} & \shortstack{Beauty\\R@10} & \shortstack{Sports\\R@10} \\
-\midrule
-SASRec & Full-rank & \shortstack{0.32 / 0.88 / 0.79M} & 0.2797 & 0.1535 & 0.0558 & \textbf{0.0390} \\
-TIGER & Discrete AR & 5.78M & 0.2996 \(\pm\) 0.0072 & 0.1739 \(\pm\) 0.0046 & 0.0477 \(\pm\) 0.0042 & 0.0236 \(\pm\) 0.0028 \\
-CQG-Single & One-step & 3.2M & \textbf{0.3104 \(\pm\) 0.0047} & \textbf{0.1822 \(\pm\) 0.0044} & \textbf{0.0597 \(\pm\) 0.0046} & 0.0363 \(\pm\) 0.0015 \\
-CQG-AR & AR continuous (\(L=3\)) & 5.62M & 0.2976 \(\pm\) 0.0032 & 0.1735 \(\pm\) 0.0016 & 0.0571 \(\pm\) 0.0043 & 0.0355 \(\pm\) 0.0004 \\
-\bottomrule
-\end{tabular}
-% \caption{Cross-dataset primary comparison. SASRec entries are single-checkpoint
-% full-rank baselines; TIGER, CQG-Single, and CQG-AR report mean $\pm$ sample SD.
-% ML-1M uses seven training seeds (42--48), whereas Beauty and Sports use three
-% (42--44); seed-level values and 95\% $t$ intervals are in
-% Appendix B. SASRec parameter counts are dataset dependent because its
-% item embedding table scales with catalog size. Each ML-1M TIGER checkpoint is
-% reselected from the saved 10K--50K-step checkpoints using valid-prefix
-% constrained validation; the corrected R@10 mean is unchanged from the earlier
-% selection, while deeper returned-list metrics change. All datasets use aligned
-% full-user evaluation within each dataset. Amazon TIGER uses our
-% hierarchical-$k$-means baseline with constrained-validation checkpoint
-% selection and valid-prefix decoding.}
-\caption{Cross-dataset primary comparison. TIGER and CQG results are
-mean $\pm$ sample SD over seeds 42--48 on ML-1M and seeds 42--44 on
-Beauty and Sports; SASRec uses one full-rank checkpoint.  SASRec's trainable
-parameter counts of 0.32/0.88/0.79M correspond to ML-1M, Beauty, and
-Sports, respectively, reflecting their different item-embedding table
-sizes. All methods use aligned full-user evaluation, and TIGER uses
-valid-prefix constrained decoding. Seed-level results and 95\% $t$
-intervals are reported in Appendix B.}
-\label{tab:primary-comparison}
-\end{table*}
-
 MSE-trained candidate-generation and reranking diagnostics are reported
 separately in Appendix C.1; they are not results from the
 CE-trained CQG-Single or CQG-AR models used in the primary comparison.
+
+
+
 
 \section{Analysis}
 
@@ -619,19 +625,36 @@ limited to eliminating discrete code lookup and finite-beam exclusion.
 The sampled-negative control and broader frozen-item objective comparison are
 reported in Appendix F.1.
 
-\paragraph{Scoreability versus empirical output coverage.}
-Catalog-wide scoreability does not imply that every item appears in a finite
-output set. With a matched returned-list size of 10 on ML-1M, TIGER, CQG-Single, and
-CQG-AR cover 70.1\%, 69.7\%, and 68.7\% of the catalog, respectively. Thus,
-CQG-Single's higher mean R@10 is not explained by retrieving a larger union of
-distinct items at this cutoff. At Top-100, the two continuous methods cover
-97.6\% of the catalog, compared with 97.0\% for TIGER. The separation is
-larger on Beauty at Top-10 (74.4\%, 89.5\%, and 87.9\%), although all methods
-approach full union coverage by Top-100. These results reinforce the
-distinction among scoreability, per-user target support, and empirical catalog
-coverage. Sports provides a counterexample to equating coverage with accuracy:
-TIGER has the broadest union coverage at both cutoffs, while full-rank SASRec
-has the highest R@10.
+% \paragraph{Scoreability versus empirical output coverage.}
+% Catalog-wide scoreability does not imply that every item appears in a finite
+% output set. With a matched returned-list size of 10 on ML-1M, TIGER, CQG-Single, and
+% CQG-AR cover 70.1\%, 69.7\%, and 68.7\% of the catalog, respectively. Thus,
+% CQG-Single's higher mean R@10 is not explained by retrieving a larger union of
+% distinct items at this cutoff. At Top-100, the two continuous methods cover
+% 97.6\% of the catalog, compared with 97.0\% for TIGER. The separation is
+% larger on Beauty at Top- (74.4\%, 89.5\%, and 87.9\%), although all methods
+% approach full union coverage by Top-100. These results reinforce the
+% distinction among scoreability, per-user target support, and empirical catalog
+% coverage. Sports provides a counterexample to equating coverage with accuracy:
+% TIGER has the broadest union coverage at both cutoffs, while full-rank SASRec
+% has the highest R@10.
+
+\paragraph{Robustness across SID constructions.}
+To examine whether the popularity skew is specific to our
+hierarchical-$k$-means baseline, we additionally evaluate a closer
+T5/RQ-VAE-style reproduction on Beauty. Across decoder seeds 42--44,
+99.48\% of generated sequences correspond to valid SIDs, yet the union of
+the Top-100 outputs covers only \(44.0\%\pm13.7\%\) of the catalog.
+Coverage increases sharply from \(14.0\%\pm7.6\%\) for Q1 rare items to
+\(88.7\%\pm13.0\%\) for Q4 popular items. This qualitative gradient suggests
+that popularity-skewed finite-output coverage is not unique to our
+hierarchical-$k$-means SID construction. Because this reproduction remains
+below the reference implementation in ranking accuracy, we treat it as a
+robustness diagnostic rather than a reproduced TIGER benchmark. Full
+details are reported in Appendix E.2 and
+Table~\ref{tab:faithful-coverage}.
+
+
 
 \begin{table*}[!t]
 \centering
@@ -685,6 +708,27 @@ intermediate-loss weight 0.}
 \label{tab:ar-depth}
 \end{table}
 
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{lrr}
+\toprule
+Catalog group & Coverage@100 & Std. \\
+\midrule
+Q1 rare & 14.0\% & 7.6\% \\
+Q2 & 26.1\% & 13.8\% \\
+Q3 & 47.4\% & 20.3\% \\
+Q4 popular & 88.7\% & 13.0\% \\
+\midrule
+Overall & 44.0\% & 13.7\% \\
+\bottomrule
+\end{tabular}
+\caption{Empirical union-of-top-100 catalog coverage for the closer T5/RQ-VAE
+Beauty reproduction, averaged over decoder seeds 42--44.}
+\label{tab:faithful-coverage}
+\end{table}
+
 \paragraph{Returned-list-size sensitivity.}
 For the seed-42 ML-1M TIGER checkpoint selected by constrained validation,
 increasing the effective returned-list size from 100 to 200 raises
@@ -695,7 +739,7 @@ leave too few items. Larger returned lists therefore relax the observed
 support limitation; our evidence supports a finite-compute trade-off, not an
 architecture-invariant catalog ceiling.
 
-\section{Discussion}
+\section{Discussion and Limitations}
 
 \paragraph{Practical implications.}
 Continuous-query retrieval removes discrete code lookup and finite-beam
@@ -739,7 +783,7 @@ not universal dominance by either interface.
 % accuracy have not been measured at production scale.
 
 
-\section{Limitations}
+\paragraph{Limitations.}
 Our evidence is specific to the evaluated model--search--compute
 configurations. Wider beams substantially raise TIGER target support, and our
 hierarchical-$k$-means TIGER-style baseline is weaker than published SID
